@@ -398,9 +398,18 @@ export default function Chores() {
               >
                 {/* Title row */}
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="text-cream text-sm font-medium flex-1">
-                    {themedTitle(chore.title, colorTheme)}
-                  </h3>
+                  <div className="flex items-start gap-2 flex-1 min-w-0">
+                    {chore.thumbnail_url && (
+                      <img
+                        src={chore.thumbnail_url}
+                        alt={`${chore.title} thumbnail`}
+                        className="w-10 h-10 object-cover rounded-md border border-border flex-shrink-0"
+                      />
+                    )}
+                    <h3 className="text-cream text-sm font-medium flex-1">
+                      {themedTitle(chore.title, colorTheme)}
+                    </h3>
+                  </div>
                   {isParent && (
                     <div className="flex items-center gap-0.5 flex-shrink-0">
                       <button

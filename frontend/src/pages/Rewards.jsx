@@ -26,6 +26,7 @@ const emptyForm = {
   description: '',
   point_cost: 50,
   icon: '',
+  thumbnail_url: '',
   stock: '',
   category: '',
 };
@@ -56,6 +57,7 @@ export default function Rewards() {
   const [form, setForm] = useState({ ...emptyForm });
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -125,6 +127,7 @@ export default function Rewards() {
       description: reward.description || '',
       point_cost: reward.point_cost ?? reward.cost ?? 50,
       icon: reward.icon || '',
+      thumbnail_url: reward.thumbnail_url || '',
       stock: reward.stock != null ? String(reward.stock) : '',
       category: reward.category || '',
     });
@@ -160,6 +163,7 @@ export default function Rewards() {
       description: form.description.trim(),
       point_cost: Number(form.point_cost),
       icon: form.icon || undefined,
+      thumbnail_url: form.thumbnail_url.trim() || null,
       category: form.category.trim() || undefined,
     };
 
@@ -179,6 +183,24 @@ export default function Rewards() {
       setFormError(err.message || 'Could not save the reward.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleThumbnailUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploadingThumbnail(true);
+    setFormError('');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const data = await api('/api/uploads', { method: 'POST', body: fd });
+      updateForm('thumbnail_url', data.path || '');
+    } catch (err) {
+      setFormError(err.message || 'Could not upload thumbnail.');
+    } finally {
+      setUploadingThumbnail(false);
+      event.target.value = '';
     }
   };
 
@@ -358,6 +380,13 @@ export default function Rewards() {
                 key={reward.id}
                 className={`game-panel p-4 flex flex-col gap-2 ${outOfStock ? 'opacity-60' : ''}`}
               >
+                {reward.thumbnail_url && (
+                  <img
+                    src={reward.thumbnail_url}
+                    alt={`${reward.title} thumbnail`}
+                    className="w-full h-28 object-cover rounded-md border border-border"
+                  />
+                )}
                 <div className="flex items-start gap-2.5">
                   <div className="w-10 h-10 rounded-md bg-surface-raised border border-border flex items-center justify-center flex-shrink-0">
                     {reward.icon ? (
@@ -474,6 +503,28 @@ export default function Rewards() {
           <div>
             <label className="block text-cream text-sm font-medium mb-1">Icon (Emoji)</label>
             <input type="text" value={form.icon} onChange={(e) => updateForm('icon', e.target.value)} placeholder="e.g. trophy, star, gift" className="field-input" />
+          </div>
+          <div>
+            <label className="block text-cream text-sm font-medium mb-1">Thumbnail (Optional)</label>
+            <input
+              type="text"
+              value={form.thumbnail_url}
+              onChange={(e) => updateForm('thumbnail_url', e.target.value)}
+              placeholder="/api/uploads/reward-image.png"
+              className="field-input"
+            />
+            <label className="inline-flex mt-2 items-center gap-2 text-xs text-muted cursor-pointer hover:text-cream transition-colors bg-surface-raised px-2.5 py-1.5 rounded-md border border-border">
+              <Gift size={12} />
+              {uploadingThumbnail ? 'Uploading...' : 'Upload thumbnail image'}
+              <input type="file" accept="image/*" className="hidden" onChange={handleThumbnailUpload} disabled={uploadingThumbnail} />
+            </label>
+            {form.thumbnail_url && (
+              <img
+                src={form.thumbnail_url}
+                alt="Reward thumbnail preview"
+                className="w-full h-24 object-cover rounded-md border border-border mt-2"
+              />
+            )}
           </div>
           <div>
             <label className="block text-cream text-sm font-medium mb-1">Category (Optional)</label>

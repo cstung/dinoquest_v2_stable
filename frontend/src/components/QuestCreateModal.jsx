@@ -26,6 +26,7 @@ const emptyForm = {
   points: 10,
   difficulty: 'easy',
   category_id: '',
+  thumbnail_url: '',
 };
 
 export default function QuestCreateModal({
@@ -41,6 +42,7 @@ export default function QuestCreateModal({
   const [submitting, setSubmitting] = useState(false);
   const [templates, setTemplates] = useState([]);
   const [showTemplates, setShowTemplates] = useState(false);
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -51,6 +53,7 @@ export default function QuestCreateModal({
           points: editingChore.points || 10,
           difficulty: editingChore.difficulty || 'easy',
           category_id: editingChore.category_id ? String(editingChore.category_id) : '',
+          thumbnail_url: editingChore.thumbnail_url || '',
         });
       } else {
         setForm({ ...emptyForm });
@@ -82,6 +85,7 @@ export default function QuestCreateModal({
       points: tpl.suggested_points,
       difficulty: tpl.difficulty,
       category_id: catMatch ? String(catMatch.id) : '',
+      thumbnail_url: '',
     });
     setShowTemplates(false);
   };
@@ -113,6 +117,7 @@ export default function QuestCreateModal({
       recurrence: 'once',
       requires_photo: false,
       assigned_user_ids: [],
+      thumbnail_url: form.thumbnail_url.trim() || null,
     };
 
     try {
@@ -127,6 +132,24 @@ export default function QuestCreateModal({
       setFormError(err.message || 'The quest scroll could not be saved.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleThumbnailUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploadingThumbnail(true);
+    setFormError('');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const data = await api('/api/uploads', { method: 'POST', body: fd });
+      updateForm('thumbnail_url', data.path || '');
+    } catch (err) {
+      setFormError(err.message || 'Failed to upload thumbnail.');
+    } finally {
+      setUploadingThumbnail(false);
+      event.target.value = '';
     }
   };
 
@@ -292,6 +315,39 @@ export default function QuestCreateModal({
               </option>
             ))}
           </select>
+        </div>
+
+        <div>
+          <label className="block text-cream text-sm font-medium mb-1 tracking-wide">
+            Thumbnail (Optional)
+          </label>
+          <div className="space-y-2">
+            <input
+              type="text"
+              value={form.thumbnail_url}
+              onChange={(e) => updateForm('thumbnail_url', e.target.value)}
+              placeholder="/api/uploads/quest-image.png"
+              className="field-input"
+            />
+            <label className="inline-flex items-center gap-2 text-xs text-muted cursor-pointer hover:text-cream transition-colors bg-surface-raised px-2.5 py-1.5 rounded-md border border-border">
+              <Scroll size={12} />
+              {uploadingThumbnail ? 'Uploading...' : 'Upload thumbnail image'}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleThumbnailUpload}
+                disabled={uploadingThumbnail}
+              />
+            </label>
+            {form.thumbnail_url && (
+              <img
+                src={form.thumbnail_url}
+                alt="Quest thumbnail preview"
+                className="w-full h-24 object-cover rounded-md border border-border"
+              />
+            )}
+          </div>
         </div>
       </div>
     </Modal>

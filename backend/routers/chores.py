@@ -297,6 +297,7 @@ async def create_chore(
         points=body.points,
         difficulty=body.difficulty,
         icon=body.icon,
+        thumbnail_url=body.thumbnail_url,
         category_id=body.category_id,
         recurrence=body.recurrence,
         custom_days=body.custom_days,
