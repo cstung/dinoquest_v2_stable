@@ -128,13 +128,9 @@ export default function Layout({ children }) {
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`flex items-center gap-2.5 px-3 py-2 border-2 border-[#0A0A0A] shadow-[4px_4px_0_#0A0A0A] text-left text-sm ${
-                  active
-                    ? 'bg-[#0A0A0A] text-[#FFE500]'
-                    : 'bg-[#FFFBF0] text-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-[#FFE500] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_#0A0A0A]'
-                }`}
+                className={`nav-button flex items-center gap-2.5 px-3 py-2 text-left text-sm ${active ? 'active-nav' : ''}`}
               >
-                <Icon size={16} className={active ? 'text-[#FFE500]' : 'text-[#0A0A0A]'} />
+                <Icon size={16} />
                 <span className="font-medium">{item.label}</span>
               </button>
             );
@@ -348,13 +344,9 @@ export default function Layout({ children }) {
                 <button
                   key={item.path}
                   onClick={() => { navigate(item.path); setShowMore(false); }}
-                  className={`flex items-center gap-3 w-full px-5 py-3 transition-colors text-left text-sm ${
-                    active
-                      ? 'bg-[#0A0A0A] text-[#FFE500]'
-                      : 'text-[#0A0A0A] hover:text-[#FFE500] hover:bg-[#0A0A0A]'
-                  }`}
+                  className={`nav-button flex items-center gap-3 w-full px-5 py-3 text-left text-sm ${active ? 'active-nav' : ''}`}
                 >
-                  <Icon size={16} className={active ? 'text-[#FFE500]' : 'text-[#0A0A0A]'} />
+                  <Icon size={16} />
                   <span className="font-medium">{item.label}</span>
                 </button>
               );

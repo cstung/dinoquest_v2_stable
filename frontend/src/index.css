@@ -158,6 +158,41 @@ p, span, small, label, li, a, button, input, textarea, select {
   background: #0066FF;
 }
 
+
+
+/* Navigation: single source of truth for active state */
+.nav-button {
+  background: var(--nb-white);
+  color: var(--nb-black);
+  border: var(--nb-border);
+  box-shadow: var(--nb-shadow);
+}
+
+.nav-button:hover {
+  background: var(--nb-black);
+  color: var(--nb-yellow);
+  box-shadow: var(--nb-shadow-sm);
+  transform: translate(2px, 2px);
+}
+
+.active-nav {
+  background: #0A0A0A !important;
+  color: #FFE500 !important;
+  border: 2px solid #0A0A0A !important;
+}
+
+.active-nav * {
+  color: inherit !important;
+  stroke: currentColor !important;
+  fill: currentColor !important;
+}
+
+/* Rule: nav icons must use inherited currentColor only */
+.nav-button svg {
+  color: inherit !important;
+  stroke: currentColor !important;
+  fill: currentColor !important;
+}
 button, a, [role='button'] {
   transition: none !important;
 }
