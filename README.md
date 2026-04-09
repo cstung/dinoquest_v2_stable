@@ -217,7 +217,7 @@ Notifications that arrive even when the app is closed — just like a native app
 | `SECRET_KEY` | *required* | JWT signing key, minimum 16 characters |
 | `TZ` | `Europe/London` | Container timezone |
 | `REGISTRATION_ENABLED` | `false` | Allow public registration (no invite code needed) |
-| `DATABASE_URL` | `sqlite+aiosqlite:////app/data/chores_os.db` | Database path |
+| `DATABASE_URL` | `sqlite+aiosqlite:////app/data/db/chores_os.db` | Database path |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `15` | Access token lifetime |
 | `REFRESH_TOKEN_EXPIRE_DAYS` | `30` | Refresh token lifetime |
 | `COOKIE_SECURE` | `false` | Set `true` behind HTTPS |
@@ -237,11 +237,24 @@ The database, default categories (9), achievements (20), quest templates (24), a
 
 ### Data persistence
 
-All persistent data lives in the `./data` directory (mounted as a Docker volume):
-- `chores_os.db` — SQLite database (WAL mode)
-- `uploads/` — photo proof files
+All persistent data lives in host bind mounts under `./data`:
+- `./data/db` → `/app/data/db` (SQLite DB + WAL files)
+- `./data/uploads` → `/app/data/uploads` (photo proof files)
 
-Back up this directory to preserve all app data.
+### Data migration (from older single-path setups)
+
+If you previously stored the DB at `./data/chores_os.db`, migrate before first restart with the new layout:
+
+```bash
+mkdir -p data/db data/uploads
+cp -n data/chores_os.db data/db/chores_os.db 2>/dev/null || true
+cp -n data/chores_os.db-wal data/db/chores_os.db-wal 2>/dev/null || true
+cp -n data/chores_os.db-shm data/db/chores_os.db-shm 2>/dev/null || true
+```
+
+The container entrypoint also performs a one-time copy from `/app/data/chores_os.db` to `/app/data/db/chores_os.db` when needed.
+
+Back up both `data/db` and `data/uploads` to preserve all app data.
 
 ---
 

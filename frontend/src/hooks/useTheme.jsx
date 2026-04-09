@@ -3,78 +3,40 @@ import { api } from '../api/client';
 
 const ThemeContext = createContext(null);
 
-const MQ = window.matchMedia('(prefers-color-scheme: light)');
-
-function resolveMode(preference) {
-  if (preference === 'system') return MQ.matches ? 'light' : 'dark';
-  return preference;
-}
-
 export const COLOR_THEMES = [
-  // ── Boy themes ──
-  { id: 'default',  label: 'Classic',            group: 'boy',  accent: '#14b8a6', secondary: '#2dd4bf', tertiary: '#f59e0b' },
-  { id: 'dragon',   label: 'Dragon Fire',       group: 'boy',  accent: '#ef4444', secondary: '#f87171', tertiary: '#f59e0b' },
-  { id: 'forest',   label: 'Enchanted Forest',  group: 'boy',  accent: '#10b981', secondary: '#34d399', tertiary: '#f59e0b' },
-  { id: 'arctic',   label: 'Arctic',            group: 'boy',  accent: '#06b6d4', secondary: '#22d3ee', tertiary: '#14b8a6' },
-  // ── Girl themes ──
-  { id: 'rose',     label: 'Rose Gold',         group: 'girl', accent: '#ec4899', secondary: '#f472b6', tertiary: '#a855f7' },
-  { id: 'galaxy',   label: 'Galaxy',            group: 'girl', accent: '#a855f7', secondary: '#c084fc', tertiary: '#ec4899' },
-  { id: 'sunshine', label: 'Sunshine',          group: 'girl', accent: '#f59e0b', secondary: '#fbbf24', tertiary: '#f97316' },
-  { id: 'fairy',    label: 'Fairy Dust',        group: 'girl', accent: '#c084fc', secondary: '#d8b4fe', tertiary: '#f0abfc' },
+  { id: 'default', label: 'Classic', group: 'boy', accent: '#FFE500', secondary: '#0066FF', tertiary: '#FF4D4D' },
+  { id: 'dragon', label: 'Dragon Fire', group: 'boy', accent: '#FF4D4D', secondary: '#FF7A59', tertiary: '#FFE500' },
+  { id: 'forest', label: 'Enchanted Forest', group: 'boy', accent: '#00A95C', secondary: '#39B54A', tertiary: '#FFE500' },
+  { id: 'arctic', label: 'Arctic', group: 'boy', accent: '#0066FF', secondary: '#1E90FF', tertiary: '#FFE500' },
+  { id: 'rose', label: 'Rose Gold', group: 'girl', accent: '#FF4D4D', secondary: '#FF7BAC', tertiary: '#FFE500' },
+  { id: 'galaxy', label: 'Galaxy', group: 'girl', accent: '#7C3AED', secondary: '#A855F7', tertiary: '#0066FF' },
+  { id: 'sunshine', label: 'Sunshine', group: 'girl', accent: '#FFE500', secondary: '#FFD100', tertiary: '#FF4D4D' },
+  { id: 'fairy', label: 'Fairy Dust', group: 'girl', accent: '#A855F7', secondary: '#C084FC', tertiary: '#FFE500' },
 ];
 
 export function ThemeProvider({ children }) {
-  // preference is what the user chose: 'dark', 'light', or 'system'
-  const [preference, setPreference] = useState(() => {
-    return localStorage.getItem('chorequest-theme') || 'system';
-  });
-
-  // resolved is the actual mode applied: always 'dark' or 'light'
-  const [resolved, setResolved] = useState(() => resolveMode(
-    localStorage.getItem('chorequest-theme') || 'system'
-  ));
-
   const [colorTheme, setColorTheme] = useState(() => {
     return localStorage.getItem('chorequest-color-theme') || 'default';
   });
 
-  // When preference changes, update resolved and persist
   useEffect(() => {
-    localStorage.setItem('chorequest-theme', preference);
-    setResolved(resolveMode(preference));
-  }, [preference]);
-
-  // Listen for OS theme changes when in 'system' mode
-  useEffect(() => {
-    if (preference !== 'system') return;
-    const handler = () => setResolved(resolveMode('system'));
-    MQ.addEventListener('change', handler);
-    return () => MQ.removeEventListener('change', handler);
-  }, [preference]);
-
-  // Apply resolved mode + color theme to document
-  useEffect(() => {
+    localStorage.setItem('chorequest-theme', 'light');
     localStorage.setItem('chorequest-color-theme', colorTheme);
 
     const el = document.documentElement;
-    el.classList.toggle('light-mode', resolved === 'light');
+    el.classList.remove('light-mode', 'dark-mode');
 
-    // Remove all theme-* classes, then add the active one
     COLOR_THEMES.forEach((t) => {
       if (t.id !== 'default') el.classList.remove(`theme-${t.id}`);
     });
     if (colorTheme !== 'default') {
       el.classList.add(`theme-${colorTheme}`);
     }
-  }, [resolved, colorTheme]);
-
-  const toggleMode = () => setPreference((p) => (resolveMode(p) === 'dark' ? 'light' : 'dark'));
+  }, [colorTheme]);
 
   const setColorThemeAndSync = useCallback(async (themeId) => {
     setColorTheme(themeId);
-    // Persist to server via avatar_config
     try {
-      // Fetch current user to get existing avatar_config
       const me = await api('/api/auth/me');
       const config = { ...(me.avatar_config || {}), color_theme: themeId };
       await api('/api/auth/me', {
@@ -82,11 +44,10 @@ export function ThemeProvider({ children }) {
         body: { avatar_config: config },
       });
     } catch {
-      // Non-critical — localStorage already has the value
+      // localStorage already has the value
     }
   }, []);
 
-  // Sync from server on mount (user's avatar_config.color_theme)
   const syncFromUser = useCallback((user) => {
     if (user?.avatar_config?.color_theme) {
       const serverTheme = user.avatar_config.color_theme;
@@ -100,10 +61,10 @@ export function ThemeProvider({ children }) {
   return (
     <ThemeContext.Provider
       value={{
-        theme: resolved,       // 'dark' or 'light' — what's actually applied
-        mode: preference,      // 'dark', 'light', or 'system' — what the user chose
-        setMode: setPreference,
-        toggle: toggleMode,
+        theme: 'light',
+        mode: 'light',
+        setMode: () => {},
+        toggle: () => {},
         colorTheme,
         setColorTheme: setColorThemeAndSync,
         syncFromUser,

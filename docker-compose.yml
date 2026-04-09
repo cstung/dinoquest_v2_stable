@@ -6,8 +6,10 @@ services:
     environment:
       - SECRET_KEY=${SECRET_KEY}
       - TZ=Europe/London
+      - DATABASE_URL=sqlite+aiosqlite:////app/data/db/chores_os.db
     volumes:
-      - ./data:/app/data
+      - ./data/db:/app/data/db
+      - ./data/uploads:/app/data/uploads
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8122/api/health')"]
