@@ -85,7 +85,8 @@ p, span, small, label, li, a, button, input, textarea, select {
   border: var(--nb-border);
   cursor: pointer;
   box-shadow: var(--nb-shadow);
-  transition: none;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+  will-change: transform;
 }
 
 .game-btn:hover {
@@ -93,6 +94,13 @@ p, span, small, label, li, a, button, input, textarea, select {
   transform: translate(2px, 2px);
 }
 
+
+
+.game-btn svg {
+  pointer-events: none;
+  color: inherit;
+  stroke: currentColor;
+}
 .game-btn:active {
   box-shadow: none;
   transform: translate(4px, 4px);

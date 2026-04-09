@@ -687,7 +687,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto overflow-hidden">
+    <div className="w-full max-w-2xl mx-auto overflow-visible">
       {/* Back + Header */}
       <button
         onClick={() => navigate('/profile')}
