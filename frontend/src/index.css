@@ -168,7 +168,8 @@ p, span, small, label, li, a, button, input, textarea, select {
 
 
 
-/* Navigation: single source of truth for active state */
+/* Sidebar navigation: single source of truth for contrast-safe states */
+.sidebar-nav-button,
 .nav-button {
   background: var(--nb-white);
   color: var(--nb-black);
@@ -176,6 +177,7 @@ p, span, small, label, li, a, button, input, textarea, select {
   box-shadow: var(--nb-shadow);
 }
 
+.sidebar-nav-button:hover,
 .nav-button:hover {
   background: var(--nb-black);
   color: var(--nb-yellow);
@@ -183,23 +185,34 @@ p, span, small, label, li, a, button, input, textarea, select {
   transform: translate(2px, 2px);
 }
 
+.sidebar-nav-button.active-nav,
+.nav-button.active-nav,
 .active-nav {
   background: #0A0A0A !important;
   color: #FFE500 !important;
   border: 2px solid #0A0A0A !important;
 }
 
-.active-nav * {
-  color: inherit !important;
-  stroke: currentColor !important;
-  fill: currentColor !important;
+/* Keep active styles deterministic on hover/focus */
+.sidebar-nav-button.active-nav:hover,
+.sidebar-nav-button.active-nav:focus-visible {
+  background: #0A0A0A !important;
+  color: #FFE500 !important;
 }
 
-/* Rule: nav icons must use inherited currentColor only */
+.active-nav *,
+.sidebar-nav-button *,
+.nav-button * {
+  color: inherit !important;
+}
+
+/* Rule: nav icons must inherit currentColor only (no direct icon colors) */
+.sidebar-nav-button svg,
 .nav-button svg {
+  pointer-events: none;
   color: inherit !important;
   stroke: currentColor !important;
-  fill: currentColor !important;
+  fill: none !important;
 }
 button, a, [role='button'] {
   transition: none !important;

@@ -128,7 +128,7 @@ export default function Layout({ children }) {
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`nav-button flex items-center gap-2.5 px-3 py-2 text-left text-sm ${active ? 'active-nav' : ''}`}
+                className={`sidebar-nav-button flex items-center gap-2.5 px-3 py-2 text-left text-sm ${active ? 'active-nav' : ''}`}
               >
                 <Icon size={16} />
                 <span className="font-medium">{item.label}</span>
