@@ -385,7 +385,7 @@ export default function Chores() {
             return (
               <div
                 key={chore.id}
-                className={`game-panel p-3 flex flex-col gap-2 cursor-pointer hover:border-accent/40 transition-colors ${
+                className={`game-panel flex flex-col cursor-pointer hover:border-accent/40 transition-colors overflow-hidden ${
                   isDone ? 'opacity-50' : ''
                 }`}
                 onClick={() => {
@@ -396,22 +396,22 @@ export default function Chores() {
                   }
                 }}
               >
-                {/* Title row */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2 flex-1 min-w-0">
-                    {chore.thumbnail_url && (
-                      <img
-                        src={chore.thumbnail_url}
-                        alt={`${chore.title} thumbnail`}
-                        className="w-10 h-10 object-cover rounded-md border border-border flex-shrink-0"
-                      />
-                    )}
-                    <h3 className="text-cream text-sm font-medium flex-1">
+                {chore.thumbnail_url && (
+                  <img
+                    src={chore.thumbnail_url}
+                    alt={`${chore.title} thumbnail`}
+                    className="w-full h-36 sm:h-32 lg:h-36 object-cover border-b-2 border-[#0A0A0A]"
+                  />
+                )}
+
+                <div className="p-3 flex flex-col gap-2 flex-1">
+                  {/* Title row */}
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="text-cream text-sm font-medium flex-1 min-w-0">
                       {themedTitle(chore.title, colorTheme)}
                     </h3>
-                  </div>
-                  {isParent && (
-                    <div className="flex items-center gap-0.5 flex-shrink-0">
+                    {isParent && (
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -440,15 +440,15 @@ export default function Chores() {
                   )}
                 </div>
 
-                {/* Description */}
-                {chore.description && (
-                  <p className="text-muted text-xs line-clamp-2">
-                    {themedDescription(chore.title, chore.description, colorTheme)}
-                  </p>
-                )}
+                  {/* Description */}
+                  {chore.description && (
+                    <p className="text-muted text-xs line-clamp-2">
+                      {themedDescription(chore.title, chore.description, colorTheme)}
+                    </p>
+                  )}
 
-                {/* Meta row */}
-                <div className="flex items-center flex-wrap gap-2 mt-auto">
+                  {/* Meta row */}
+                  <div className="flex items-center flex-wrap gap-2 mt-auto">
                   <span className="flex items-center gap-1 text-gold font-medium text-sm">
                     <Star size={12} fill="currentColor" />
                     {chore.points} XP
@@ -456,8 +456,8 @@ export default function Chores() {
                   <DifficultyStars level={chore.difficulty || 1} />
                 </div>
 
-                {/* Bottom row */}
-                <div className="flex items-center flex-wrap gap-1.5">
+                  {/* Bottom row */}
+                  <div className="flex items-center flex-wrap gap-1.5">
                   <CategoryBadge category={chore.category} />
                   <RecurrenceIndicator
                     recurrence={chore.recurrence}
@@ -510,11 +510,11 @@ export default function Chores() {
                 )}
 
                 {/* Kid: photo upload + complete */}
-                {isPending && (
-                  <div
-                    className="mt-1 space-y-1.5"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  {isPending && (
+                    <div
+                      className="mt-1 space-y-1.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                     {chore.requires_photo && (
                       <label className="inline-flex items-center gap-1.5 text-xs text-muted cursor-pointer hover:text-cream transition-colors bg-surface-raised px-2.5 py-1.5 rounded-md border border-border">
                         <Camera size={12} />
@@ -562,8 +562,9 @@ export default function Chores() {
                         </>
                       )}
                     </button>
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </div>
             );
           })}

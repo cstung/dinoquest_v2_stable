@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 
@@ -11,7 +12,7 @@ const panelVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: { duration: 0.15 },
+    transition: { duration: 0.12 },
   },
   exit: { opacity: 0, transition: { duration: 0.1 } },
 };
@@ -29,18 +30,12 @@ export default function Modal({ isOpen, onClose, title, children, actions }) {
 
     document.addEventListener('keydown', handleKeyDown);
 
-    const alreadyLocked = document.body.style.position === 'fixed';
-    const scrollY = alreadyLocked
-      ? -parseInt(document.body.style.top || '0', 10)
-      : window.scrollY;
-
-    if (!alreadyLocked) {
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.left = '0';
-      document.body.style.right = '0';
-      document.body.style.overflow = 'hidden';
-    }
+    const scrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.overflow = 'hidden';
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
@@ -53,33 +48,32 @@ export default function Modal({ isOpen, onClose, title, children, actions }) {
     };
   }, [isOpen, handleKeyDown]);
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="modal fixed inset-0 z-[9999] flex items-center justify-center p-4"
           variants={overlayVariants}
           initial="hidden"
           animate="visible"
           exit="hidden"
           transition={{ duration: 0.12 }}
         >
-          {/* Backdrop */}
-          <motion.div
-            className="absolute inset-0 bg-black/50"
+          <motion.button
+            type="button"
+            aria-label="Close modal backdrop"
+            className="modal-backdrop absolute inset-0 bg-black/60"
             onClick={onClose}
           />
 
-          {/* Panel */}
           <motion.div
-            className="game-panel relative z-10 w-full max-w-md max-h-[85vh] overflow-y-auto overscroll-contain p-5"
+            className="modal-panel game-panel relative z-10 w-full max-w-md max-h-[85vh] overflow-y-auto overscroll-contain p-5"
             variants={panelVariants}
             initial="hidden"
             animate="visible"
             exit="exit"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
             <div className="flex items-start justify-between gap-3 mb-4">
               {title && (
                 <h2 className="text-cream text-base font-semibold">
@@ -88,17 +82,15 @@ export default function Modal({ isOpen, onClose, title, children, actions }) {
               )}
               <button
                 onClick={onClose}
-                className="p-1 rounded-md hover:bg-surface-raised transition-colors text-muted hover:text-cream flex-shrink-0"
+                className="p-1 border-2 border-[#0A0A0A] bg-[#FFFFFF] text-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-[#FFE500] flex-shrink-0"
                 aria-label="Close"
               >
                 <X size={16} />
               </button>
             </div>
 
-            {/* Content */}
             <div className="text-cream text-sm">{children}</div>
 
-            {/* Actions */}
             {actions && actions.length > 0 && (
               <div className="flex items-center justify-end gap-2 mt-5 pt-3 border-t border-border">
                 {actions.map((action, idx) => (
@@ -118,4 +110,6 @@ export default function Modal({ isOpen, onClose, title, children, actions }) {
       )}
     </AnimatePresence>
   );
+
+  return createPortal(modalContent, document.body);
 }

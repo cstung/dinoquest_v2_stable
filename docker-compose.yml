@@ -6,6 +6,7 @@ services:
     environment:
       - SECRET_KEY=${SECRET_KEY}
       - TZ=Europe/London
+      - DATABASE_URL=sqlite+aiosqlite:////app/data/chores_os.db
     volumes:
       - ./data:/app/data
     restart: unless-stopped

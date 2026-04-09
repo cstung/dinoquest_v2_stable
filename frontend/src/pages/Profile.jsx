@@ -14,9 +14,6 @@ import {
   LogOut,
   KeyRound,
   Lock,
-  Sun,
-  Moon,
-  Monitor,
   Flame,
   Award,
   Star,
@@ -139,7 +136,7 @@ function PushNotificationToggle() {
 export default function Profile() {
   const navigate = useNavigate();
   const { user, logout, updateUser } = useAuth();
-  const { theme, mode, setMode, colorTheme, setColorTheme } = useTheme();
+  const { colorTheme, setColorTheme } = useTheme();
 
   const [displayName, setDisplayName] = useState(user?.display_name || '');
   const [nameSaving, setNameSaving] = useState(false);
@@ -639,25 +636,8 @@ export default function Profile() {
       {/* Theme Toggle */}
       <div className="game-panel p-4">
         <h2 className="text-cream text-sm font-semibold mb-3">Appearance</h2>
-        <div className="flex items-center gap-0.5 mb-4 bg-navy/60 rounded-md p-0.5">
-          {[
-            { id: 'light', icon: Sun, label: 'Light' },
-            { id: 'dark', icon: Moon, label: 'Dark' },
-            { id: 'system', icon: Monitor, label: 'Auto' },
-          ].map(({ id, icon: Icon, label }) => (
-            <button
-              key={id}
-              onClick={() => setMode(id)}
-              className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                mode === id
-                  ? 'bg-surface-raised text-cream'
-                  : 'text-muted hover:text-cream'
-              }`}
-            >
-              <Icon size={13} />
-              {label}
-            </button>
-          ))}
+        <div className="mb-4 border-2 border-[#0A0A0A] bg-[#FFE500] p-2 text-xs font-semibold text-[#0A0A0A]">
+          Light mode is always enabled for the Neobrutalism interface.
         </div>
 
         {/* Color Theme */}

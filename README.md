@@ -237,9 +237,16 @@ The database, default categories (9), achievements (20), quest templates (24), a
 
 ### Data persistence
 
-All persistent data lives in the `./data` directory (mounted as a Docker volume):
+All persistent data lives in the `./data` directory (bind-mounted to `/app/data`):
 - `chores_os.db` — SQLite database (WAL mode)
 - `uploads/` — photo proof files
+
+Make sure host permissions allow UID `1000` write access:
+
+```bash
+mkdir -p data/uploads
+chown -R 1000:1000 data
+```
 
 Back up this directory to preserve all app data.
 

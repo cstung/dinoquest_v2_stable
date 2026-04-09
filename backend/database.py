@@ -1,6 +1,26 @@
+import logging
+from pathlib import Path
+
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
+
 from backend.config import settings
+
+logger = logging.getLogger(__name__)
+
+
+def _prepare_sqlite_path(database_url: str) -> None:
+    """Ensure SQLite target directory exists before engine connects."""
+    prefix = "sqlite+aiosqlite:////"
+    if not database_url.startswith(prefix):
+        return
+
+    db_file = Path("/" + database_url[len(prefix):])
+    db_file.parent.mkdir(parents=True, exist_ok=True)
+    logger.info("Using DB at: %s", database_url)
+
+
+_prepare_sqlite_path(settings.DATABASE_URL)
 
 engine = create_async_engine(
     settings.DATABASE_URL,
