@@ -25,7 +25,6 @@ import SpinWheel from '../components/SpinWheel';
 import ConfettiAnimation from '../components/ConfettiAnimation';
 import RankBadge from '../components/RankBadge';
 import PetLevelBadge from '../components/PetLevelBadge';
-import { QuestBoardOverlay, QuestBoardPageGlow, QuestBoardParticles, QuestBoardDecorations, QuestBoardTitle, BOARD_THEMES, getTheme } from '../components/QuestBoardTheme';
 import { renderPet, renderPetExtras, renderPetAccessory, buildPetColors } from '../components/avatar';
 import XPBalanceChart from '../components/XPBalanceChart';
 import DashboardStats from '../components/DashboardStats';
@@ -97,7 +96,6 @@ export default function KidDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [showThemePicker, setShowThemePicker] = useState(false);
 
   // Pet interactions
   const [petInteracting, setPetInteracting] = useState(null);
@@ -105,15 +103,6 @@ export default function KidDashboard() {
   const [petMessage, setPetMessage] = useState('');
   const [interactionsRemaining, setInteractionsRemaining] = useState(3);
 
-  // Board theme — stored in localStorage
-  const [boardTheme, setBoardTheme] = useState(() =>
-    localStorage.getItem('dinoquest-board-theme') || 'default'
-  );
-  const changeBoardTheme = (id) => {
-    setBoardTheme(id);
-    localStorage.setItem('dinoquest-board-theme', id);
-    setShowThemePicker(false);
-  };
 
   // ---- data fetching ----
 
@@ -214,12 +203,9 @@ export default function KidDashboard() {
   const totalCount = assignments.length;
   const progressPct = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
 
-  const activeTheme = getTheme(boardTheme);
 
   return (
-    <div className={`max-w-2xl mx-auto space-y-5 quest-board-${boardTheme}`}>
-      {/* ── Page-level ambient glow ── */}
-      <QuestBoardPageGlow themeId={boardTheme} />
+    <div className="max-w-2xl mx-auto space-y-5">
 
       {/* ── Confetti overlay ── */}
       <AnimatePresence>
@@ -236,7 +222,7 @@ export default function KidDashboard() {
         <div className="relative z-10 space-y-4">
           <div className="flex items-center justify-between gap-2 p-1">
             <h1 className="text-nb-black text-2xl font-black uppercase tracking-tighter italic">
-              <QuestBoardTitle themeId={boardTheme}>Quest Board</QuestBoardTitle>
+              Quest Board
             </h1>
             <div className="flex items-center gap-2">
               <QuestBoardDecorations themeId={boardTheme} />

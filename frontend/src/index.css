@@ -68,7 +68,8 @@ p, span, small, label, li, a, button, input, textarea, select {
 
 .game-panel {
   background: var(--nb-white);
-  border: var(--nb-border);
+  outline: 2px solid #000000 !important;
+  outline-offset: -2px;
   box-shadow: var(--nb-shadow);
 }
 
