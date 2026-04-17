@@ -5,13 +5,14 @@ services:
       - "5006:8122"
     volumes:
       - ./data:/app/data
+    env_file:
+      - .env
     environment:
-      - SECRET_KEY=509042a7418df2207b845c45c8e3e5af566f9962
-      - TZ=Asia/Ho_Chi_Minh
-      - DATABASE_URL=sqlite+aiosqlite:////app/data/chores_os.db
+      - TZ=${TZ:-Asia/Ho_Chi_Minh}
+      - DATABASE_URL=${DATABASE_URL:-sqlite+aiosqlite:////app/data/chores_os.db}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8122/api/health')"]
+      test: ["CMD", "curl", "-f", "http://localhost:8122/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3

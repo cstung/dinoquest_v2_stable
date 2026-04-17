@@ -7,14 +7,20 @@ COPY frontend/ ./
 RUN chmod -R +x node_modules/.bin && npm run build
 
 # Stage 2: Python runtime
-FROM python:3.12-slim
+FROM python:3.12.1-slim
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends gosu && rm -rf /var/lib/apt/lists/*
+# Install dependencies including curl for healthcheck
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gosu \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd -g 1000 appuser && useradd -u 1000 -g appuser -m appuser
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ ./backend/
 

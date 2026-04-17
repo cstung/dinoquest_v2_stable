@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import viteCompression from 'vite-plugin-compression'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -24,7 +25,23 @@ function swVersionStamp() {
 }
 
 export default defineConfig({
-  plugins: [react(), tailwindcss(), swVersionStamp()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    swVersionStamp(),
+    viteCompression({ algorithm: 'gzip', ext: '.gz' }),
+    viteCompression({ algorithm: 'brotliCompress', ext: '.br' }),
+  ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': ['framer-motion', 'lucide-react', 'recharts'],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {

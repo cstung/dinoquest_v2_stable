@@ -26,7 +26,17 @@ class Settings(BaseSettings):
 
 
 def get_settings() -> Settings:
-    settings = Settings()
+    try:
+        settings = Settings()
+    except Exception as e:
+        print(f"ERROR: Configuration loading failed: {e}")
+        sys.exit(1)
+
+    if not settings.SECRET_KEY or settings.SECRET_KEY == "generate-a-strong-secret-key-at-least-16-chars":
+        print("ERROR: SECRET_KEY environment variable is not set or using default placeholder.")
+        print("Please set a strong SECRET_KEY in your .env file or environment.")
+        sys.exit(1)
+
     if len(settings.SECRET_KEY) < 16:
         print("ERROR: SECRET_KEY must be at least 16 characters")
         sys.exit(1)

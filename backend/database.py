@@ -38,8 +38,10 @@ class Base(DeclarativeBase):
 async def init_db():
     _prepare_sqlite_path(settings.DATABASE_URL)
     async with engine.begin() as conn:
-        # Enable WAL mode
+        # Enable WAL mode and performance tuning
         await conn.exec_driver_sql("PRAGMA journal_mode=WAL")
+        await conn.exec_driver_sql("PRAGMA synchronous=NORMAL")
+        await conn.exec_driver_sql("PRAGMA cache_size=-64000")  # 64MB cache
         from backend.models import (  # noqa: F401
             User, Chore, ChoreAssignment, ChoreCategory, ChoreRotation,
             ChoreExclusion, ChoreAssignmentRule, QuestTemplate,

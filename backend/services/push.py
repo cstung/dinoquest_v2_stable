@@ -4,6 +4,7 @@ All external imports (pywebpush, cryptography) are lazy so the app
 starts even if these packages are not installed.
 """
 
+import asyncio
 import base64
 import json
 import logging
@@ -332,7 +333,9 @@ async def send_push_to_user(
             },
         }
         vapid_claims = {"sub": settings.VAPID_CLAIM_EMAIL}
-        result = _send_one(subscription_info, payload, vapid_private, vapid_public, vapid_claims)
+        result = await asyncio.to_thread(
+            _send_one, subscription_info, payload, vapid_private, vapid_public, vapid_claims
+        )
         if result == "ok":
             sent += 1
         elif result == "gone":
