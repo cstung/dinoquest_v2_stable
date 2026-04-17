@@ -212,7 +212,7 @@ export default function KidDashboard() {
       </AnimatePresence>
 
       {/* ── Header with stats ── */}
-      <div className="relative overflow-hidden">
+      <div className="relative">
         <div className="relative z-10 space-y-4">
           <div className="flex items-center justify-between gap-2 p-1">
             <h1 className="text-nb-black text-2xl font-black uppercase tracking-tighter italic">

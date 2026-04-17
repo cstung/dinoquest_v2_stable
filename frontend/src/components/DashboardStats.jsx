@@ -5,8 +5,7 @@ export default function DashboardStats({ points, streak, rank }) {
   return (
     <div className="grid grid-cols-2 gap-3 mb-2">
       <motion.div 
-        className="game-panel p-3 bg-nb-yellow flex items-center justify-between"
-        whileHover={{ scale: 1.02 }}
+        className="nb-panel p-3 bg-nb-yellow flex items-center justify-between"
       >
         <div className="flex flex-col">
           <span className="text-[10px] font-black uppercase tracking-wider opacity-60">Total XP</span>
@@ -16,8 +15,7 @@ export default function DashboardStats({ points, streak, rank }) {
       </motion.div>
 
       <motion.div 
-        className="game-panel p-3 bg-nb-white flex items-center justify-between"
-        whileHover={{ scale: 1.02 }}
+        className="nb-panel p-3 bg-nb-white flex items-center justify-between"
       >
         <div className="flex flex-col">
           <span className="text-[10px] font-black uppercase tracking-wider opacity-60">Streak</span>
@@ -28,7 +26,7 @@ export default function DashboardStats({ points, streak, rank }) {
 
       {rank && (
         <motion.div 
-          className="game-panel col-span-2 p-3 bg-nb-black text-nb-yellow flex items-center gap-3"
+          className="nb-panel col-span-2 p-3 bg-nb-black text-nb-yellow flex items-center gap-3"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
         >

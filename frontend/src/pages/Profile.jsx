@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
-import { useTheme, COLOR_THEMES } from '../hooks/useTheme';
 import AvatarDisplay from '../components/AvatarDisplay';
 import { useNavigate } from 'react-router-dom';
 import ChoreIcon from '../components/ChoreIcon';
@@ -136,8 +135,6 @@ function PushNotificationToggle() {
 export default function Profile() {
   const navigate = useNavigate();
   const { user, logout, updateUser } = useAuth();
-  const { colorTheme, setColorTheme } = useTheme();
-
   const [displayName, setDisplayName] = useState(user?.display_name || '');
   const [nameSaving, setNameSaving] = useState(false);
   const [nameMsg, setNameMsg] = useState('');
@@ -632,64 +629,6 @@ export default function Profile() {
 
       {/* Push Notifications */}
       <PushNotificationToggle />
-
-      {/* Theme Toggle */}
-      <div className="game-panel p-4">
-        <h2 className="text-cream text-sm font-semibold mb-3">Appearance</h2>
-        <div className="mb-4 border-2 border-[#0A0A0A] bg-[#FFE500] p-2 text-xs font-semibold text-[#0A0A0A]">
-          Light mode is always enabled for the Neobrutalism interface.
-        </div>
-
-        {/* Color Theme */}
-        <p className="text-muted text-xs font-medium mb-2">Color Theme</p>
-        {['boy', 'girl'].map((group) => (
-          <div key={group} className="mb-3">
-            <p className="text-muted text-[11px] font-medium mb-1.5">
-              {group === 'boy' ? 'Knight Themes' : 'Princess Themes'}
-            </p>
-            <div className="grid grid-cols-3 sm:grid-cols-4 gap-1.5">
-              {COLOR_THEMES.filter((t) => t.group === group).map((t) => {
-                const isActive = colorTheme === t.id;
-                return (
-                  <button
-                    key={t.id}
-                    onClick={() => setColorTheme(t.id)}
-                    className={`relative flex flex-col items-center gap-1 p-2 rounded-md border transition-colors ${
-                      isActive
-                        ? 'border-accent bg-accent/10'
-                        : 'border-border hover:border-border-light bg-surface-raised/30'
-                    }`}
-                  >
-                    <div className="flex gap-0.5">
-                      <div
-                        className="w-4 h-4 rounded-full border border-white/10"
-                        style={{ backgroundColor: t.accent }}
-                      />
-                      <div
-                        className="w-4 h-4 rounded-full border border-white/10"
-                        style={{ backgroundColor: t.secondary }}
-                      />
-                      <div
-                        className="w-4 h-4 rounded-full border border-white/10"
-                        style={{ backgroundColor: t.tertiary }}
-                      />
-                    </div>
-                    <span className="text-[10px] font-medium text-cream/80 leading-tight text-center">
-                      {t.label}
-                    </span>
-                    {isActive && (
-                      <div
-                        className="absolute top-1 right-1 w-2 h-2 rounded-full"
-                        style={{ backgroundColor: t.accent }}
-                      />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </div>
 
       {/* Management */}
       {(user?.role === 'admin' || user?.role === 'parent') && (

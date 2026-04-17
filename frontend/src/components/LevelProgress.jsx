@@ -2,13 +2,9 @@ import { motion } from 'framer-motion';
 
 export default function LevelProgress({ completed, total, xp, rank }) {
   const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
-  
-  // XP to next level logic (simulated for UI)
-  const nextLevelXP = 1000; // Placeholder logic
-  const xpProgress = (xp % nextLevelXP) / nextLevelXP * 100;
 
   return (
-    <div className="game-panel p-4 bg-nb-black text-nb-white relative overflow-hidden">
+    <div className="nb-panel p-4 bg-nb-black text-nb-white relative">
       <div className="relative z-10">
         <div className="flex justify-between items-end mb-2">
           <div>
@@ -47,11 +43,6 @@ export default function LevelProgress({ completed, total, xp, rank }) {
                 <div className="text-[10px] font-black uppercase">{Math.max(0, 500 - (xp % 500))} XP</div>
             </div>
         </div>
-      </div>
-      
-      {/* Background decoration */}
-      <div className="absolute -right-4 -bottom-4 opacity-5 rotate-12 pointer-events-none">
-        <div className="text-8xl font-black">QUEST</div>
       </div>
     </div>
   );

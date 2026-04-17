@@ -78,6 +78,12 @@ p, span, small, label, li, a, button, input, textarea, select {
   transform: translate(2px, 2px);
 }
 
+.nb-panel {
+  background: var(--nb-white);
+  border: 2px solid #000000;
+  box-shadow: var(--nb-shadow);
+}
+
 .game-btn {
   font-family: var(--font-heading);
   font-size: 13px;
