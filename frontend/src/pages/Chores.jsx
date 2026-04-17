@@ -8,6 +8,7 @@ import Modal from '../components/Modal';
 import QuestCreateModal from '../components/QuestCreateModal';
 import QuestAssignModal from '../components/QuestAssignModal';
 import AvatarDisplay from '../components/AvatarDisplay';
+import ExpandableText from '../components/ExpandableText';
 import {
   Swords,
   Plus,
@@ -79,17 +80,24 @@ function RecurrenceIndicator({ recurrence, customDays }) {
   );
 }
 
+function getLocalISO(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function getMondayOfThisWeek() {
   const now = new Date();
   const day = now.getDay();
   const diff = day === 0 ? -6 : 1 - day;
   const monday = new Date(now);
   monday.setDate(now.getDate() + diff);
-  return monday.toISOString().slice(0, 10);
+  return getLocalISO(monday);
 }
 
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return getLocalISO(new Date());
 }
 
 export default function Chores() {
@@ -441,11 +449,10 @@ export default function Chores() {
                 </div>
 
                   {/* Description */}
-                  {chore.description && (
-                    <p className="text-muted text-xs line-clamp-2">
-                      {themedDescription(chore.title, chore.description, colorTheme)}
-                    </p>
-                  )}
+                  <ExpandableText
+                    text={themedDescription(chore.title, chore.description, colorTheme)}
+                    lines={2}
+                  />
 
                   {/* Meta row */}
                   <div className="flex items-center flex-wrap gap-2 mt-auto">

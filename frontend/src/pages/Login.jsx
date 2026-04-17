@@ -99,7 +99,7 @@ export default function Login() {
             <Swords size={16} className="text-navy" />
           </div>
           <h1 className="text-cream text-lg font-semibold">
-            ChoreQuest
+            DinoQuest
           </h1>
         </div>
 

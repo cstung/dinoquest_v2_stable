@@ -51,6 +51,7 @@ class PointType(str, enum.Enum):
     achievement = "achievement"
     spin = "spin"
     event_multiplier = "event_multiplier"
+    examination_score = "examination_score"
 
 
 class NotificationType(str, enum.Enum):

@@ -20,19 +20,22 @@ import {
 } from 'lucide-react';
 
 function toISO(date) {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function addDays(dateStr, n) {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  return toISO(d);
 }
 
 const SHORT_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 function statusStyle(assignment, dayStr) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = toISO(new Date());
 
   if (assignment.status === 'verified') {
     return {

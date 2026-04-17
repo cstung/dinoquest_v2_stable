@@ -82,7 +82,7 @@ export default function Modal({ isOpen, onClose, title, children, actions }) {
               )}
               <button
                 onClick={onClose}
-                className="p-1 border-2 border-[#0A0A0A] bg-[#FFFFFF] text-[#0A0A0A] hover:bg-[#0A0A0A] hover:text-[#FFE500] flex-shrink-0"
+                className="p-1 border-2 border-[#0A0A0A] bg-[#FFFFFF] text-[#0A0A0A] hover:bg-[#7C3AED] hover:text-white flex-shrink-0"
                 aria-label="Close"
               >
                 <X size={16} />

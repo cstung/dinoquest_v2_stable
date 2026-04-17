@@ -1,6 +1,6 @@
 // The placeholder below is stamped by the Vite plugin at build time
 // (see vite.config.js) so the SW cache auto-bumps every production build.
-const CACHE_NAME = 'chorequest-__BUILD_TS__';
+const CACHE_NAME = 'dinoquest-__BUILD_TS__';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -35,15 +35,15 @@ self.addEventListener('push', (event) => {
   try {
     payload = event.data.json();
   } catch {
-    payload = { title: 'ChoreQuest', body: event.data.text() };
+    payload = { title: 'DinoQuest', body: event.data.text() };
   }
 
-  const title = payload.title || 'ChoreQuest';
+  const title = payload.title || 'DinoQuest';
   const options = {
     body: payload.body || '',
     icon: '/icon-192.png',
     badge: '/favicon-32.png',
-    tag: payload.tag || 'chorequest',
+    tag: payload.tag || 'dinoquest',
     renotify: true,
     data: { url: payload.url || '/' },
   };

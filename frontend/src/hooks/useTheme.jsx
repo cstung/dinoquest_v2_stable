@@ -16,12 +16,12 @@ export const COLOR_THEMES = [
 
 export function ThemeProvider({ children }) {
   const [colorTheme, setColorTheme] = useState(() => {
-    return localStorage.getItem('chorequest-color-theme') || 'default';
+    return localStorage.getItem('dinoquest-color-theme') || 'default';
   });
 
   useEffect(() => {
-    localStorage.setItem('chorequest-theme', 'light');
-    localStorage.setItem('chorequest-color-theme', colorTheme);
+    localStorage.setItem('dinoquest-theme', 'light');
+    localStorage.setItem('dinoquest-color-theme', colorTheme);
 
     const el = document.documentElement;
     el.classList.remove('light-mode', 'dark-mode');
@@ -53,7 +53,7 @@ export function ThemeProvider({ children }) {
       const serverTheme = user.avatar_config.color_theme;
       if (COLOR_THEMES.some((t) => t.id === serverTheme)) {
         setColorTheme(serverTheme);
-        localStorage.setItem('chorequest-color-theme', serverTheme);
+        localStorage.setItem('dinoquest-color-theme', serverTheme);
       }
     }
   }, []);

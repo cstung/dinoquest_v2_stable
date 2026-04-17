@@ -20,6 +20,7 @@ import {
   Filter,
   Loader2,
 } from 'lucide-react';
+import ExpandableText from '../components/ExpandableText';
 
 const emptyForm = {
   title: '',
@@ -397,9 +398,11 @@ export default function Rewards() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-cream text-sm font-medium">{reward.title}</h3>
-                    {reward.description && (
-                      <p className="text-muted text-xs mt-0.5 line-clamp-2">{reward.description}</p>
-                    )}
+                    <ExpandableText
+                      text={reward.description}
+                      lines={2}
+                      className="mt-0.5"
+                    />
                   </div>
                 </div>
 

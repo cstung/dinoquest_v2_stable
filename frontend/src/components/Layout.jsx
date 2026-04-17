@@ -20,17 +20,22 @@ import {
   Users,
   Trophy,
   MoreHorizontal,
+  BookOpen,
+  Settings2,
 } from 'lucide-react';
+import ExpandableText from './ExpandableText';
 import AvatarDisplay from './AvatarDisplay';
 
 const ALL_NAV_ITEMS = [
   { label: 'Home', icon: Home, path: '/' },
   { label: 'Quests', icon: Swords, path: '/chores' },
+  { label: 'Exams', icon: BookOpen, path: '/examinations', mobileMore: true },
   { label: 'Party', icon: Users, path: '/party', mobileMore: true },
   { label: 'Leaderboard', icon: Trophy, path: '/leaderboard', settingKey: 'leaderboard_enabled', mobileMore: true },
   { label: 'Rewards', icon: Gift, path: '/rewards' },
   { label: 'Calendar', icon: CalendarDays, path: '/calendar', mobileMore: true },
   { label: 'Events', icon: Sparkles, path: '/events', parentOnly: true, mobileMore: true },
+  { label: 'Manage Exams', icon: Settings2, path: '/admin/examinations', adminOnly: true, mobileMore: true },
 ];
 
 function timeAgo(dateStr) {
@@ -94,8 +99,10 @@ export default function Layout({ children }) {
     setShowMore(false);
   }, [location.pathname]);
 
-  const isParent = user?.role === 'parent' || user?.role === 'admin';
+  const isAdmin = user?.role === 'admin';
+  const isParent = user?.role === 'parent' || isAdmin;
   const navItems = ALL_NAV_ITEMS.filter((item) => {
+    if (item.adminOnly && !isAdmin) return false;
     if (item.parentOnly && !isParent) return false;
     if (item.settingKey && settings[item.settingKey] === false) return false;
     return true;
@@ -117,7 +124,7 @@ export default function Layout({ children }) {
           <div className="w-7 h-7 bg-[#0A0A0A] flex items-center justify-center border-2 border-[#0A0A0A]">
             <Swords size={14} className="text-[#FFE500]" />
           </div>
-          <span className="text-[#0A0A0A] text-[15px] font-semibold">ChoreQuest</span>
+          <span className="text-[#0A0A0A] text-[15px] font-semibold">DinoQuest</span>
         </div>
 
         <nav className="flex flex-col gap-0.5 px-3 mt-1 flex-1">
@@ -139,7 +146,7 @@ export default function Layout({ children }) {
 
         {user && (
           <div
-            className="flex items-center gap-2.5 px-4 py-3 border-t-2 border-[#0A0A0A] cursor-pointer hover:bg-[#0A0A0A] hover:text-[#FFE500]"
+            className="group flex items-center gap-2.5 px-4 py-3 border-t-2 border-[#0A0A0A] cursor-pointer hover:bg-[#7C3AED]"
             onClick={() => navigate('/profile')}
           >
             <AvatarDisplay
@@ -149,10 +156,10 @@ export default function Layout({ children }) {
               animate
             />
             <div className="min-w-0">
-              <p className="text-cream text-sm font-medium truncate">
+              <p className="text-[#0A0A0A] text-sm font-medium truncate group-hover:text-white">
                 {user.display_name || user.username}
               </p>
-              <p className="text-muted text-xs capitalize">{user.role}</p>
+              <p className="text-[#0A0A0A]/60 text-xs capitalize group-hover:text-white">{user.role}</p>
             </div>
           </div>
         )}
@@ -166,7 +173,7 @@ export default function Layout({ children }) {
             {!isHome && (
               <button
                 onClick={() => navigate(-1)}
-                className="p-1.5 border-2 border-[#0A0A0A] bg-[#FFFFFF] text-[#0A0A0A] shadow-[4px_4px_0_#0A0A0A] hover:bg-[#0A0A0A] hover:text-[#FFE500] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_#0A0A0A]"
+                className="p-1.5 border-2 border-[#0A0A0A] bg-[#FFFFFF] text-[#0A0A0A] shadow-[4px_4px_0_#0A0A0A] hover:bg-[#7C3AED] hover:text-white hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_#0A0A0A]"
                 aria-label="Go back"
               >
                 <ArrowLeft size={18} />
@@ -179,7 +186,7 @@ export default function Layout({ children }) {
               <div className="w-6 h-6 bg-[#0A0A0A] flex items-center justify-center border-2 border-[#0A0A0A]">
                 <Swords size={12} className="text-[#FFE500]" />
               </div>
-              <span className="text-[#0A0A0A] text-sm font-semibold">ChoreQuest</span>
+              <span className="text-[#0A0A0A] text-sm font-semibold">DinoQuest</span>
             </div>
           </div>
 
@@ -193,10 +200,10 @@ export default function Layout({ children }) {
                     return !v;
                   });
                 }}
-                className="relative p-2 border-2 border-[#0A0A0A] bg-[#FFFFFF] shadow-[4px_4px_0_#0A0A0A] hover:bg-[#0A0A0A] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_#0A0A0A]"
+                className="relative p-2 border-2 border-[#0A0A0A] bg-[#FFFFFF] shadow-[4px_4px_0_#0A0A0A] hover:bg-[#7C3AED] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_#0A0A0A]"
                 aria-label="Notifications"
               >
-                <Bell size={18} className="text-[#0A0A0A] hover:text-[#FFE500]" />
+                <Bell size={18} className="text-[#0A0A0A] group-hover:text-white" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 bg-crimson text-white text-[10px] font-bold min-w-[16px] h-[16px] flex items-center justify-center rounded-full px-1 leading-none">
                     {unreadCount > 99 ? '99+' : unreadCount}
@@ -252,9 +259,11 @@ export default function Layout({ children }) {
                                 <p className="text-cream text-sm font-medium truncate">
                                   {n.title}
                                 </p>
-                                <p className="text-muted text-xs mt-0.5 line-clamp-2">
-                                  {n.message}
-                                </p>
+                                <ExpandableText
+                                  text={n.message}
+                                  lines={2}
+                                  className="mt-0.5"
+                                />
                                 {isTrade && (
                                   <div className="flex items-center gap-2 mt-2">
                                     <button

@@ -21,6 +21,9 @@ const Events = lazy(() => import('./pages/Events'));
 const KidQuests = lazy(() => import('./pages/KidQuests'));
 const Party = lazy(() => import('./pages/Party'));
 const AvatarEditor = lazy(() => import('./components/AvatarEditor'));
+const ExaminationList = lazy(() => import('./pages/ExaminationList'));
+const ExaminationTake = lazy(() => import('./pages/ExaminationTake'));
+const AdminExaminations = lazy(() => import('./pages/AdminExaminations'));
 
 function Loading() {
   return (
@@ -79,7 +82,10 @@ export default function App() {
           <Route path="/events" element={<Events />} />
           <Route path="/kids/:kidId" element={<KidQuests />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/examinations" element={<ExaminationList />} />
+          <Route path="/examinations/:testId/take" element={<ExaminationTake />} />
           {user.role === 'admin' && <Route path="/admin" element={<AdminDashboard />} />}
+          {user.role === 'admin' && <Route path="/admin/examinations" element={<AdminExaminations />} />}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>

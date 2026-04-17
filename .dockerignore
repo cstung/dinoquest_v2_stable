@@ -1,0 +1,12 @@
+node_modules
+dist
+__pycache__
+*.pyc
+*.pyo
+data
+*.db
+.git
+.gitignore
+.env
+.pytest_cache
+.DS_Store

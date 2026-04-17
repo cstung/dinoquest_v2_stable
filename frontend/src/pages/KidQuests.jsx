@@ -15,6 +15,7 @@ import { api } from '../api/client';
 import { useTheme } from '../hooks/useTheme';
 import { themedTitle, themedDescription } from '../utils/questThemeText';
 import AvatarDisplay from '../components/AvatarDisplay';
+import ExpandableText from '../components/ExpandableText';
 
 const STATUS_CONFIG = {
   pending: { label: 'Pending', color: 'text-muted', icon: Clock },
@@ -192,11 +193,11 @@ export default function KidQuests() {
                         <Camera size={12} className="text-accent flex-shrink-0" />
                       )}
                     </div>
-                    {a.chore.description && (
-                      <p className="text-muted text-xs line-clamp-1 mb-1.5">
-                        {themedDescription(a.chore.title, a.chore.description, colorTheme)}
-                      </p>
-                    )}
+                    <ExpandableText
+                      text={themedDescription(a.chore.title, a.chore.description, colorTheme)}
+                      lines={1}
+                      className="mb-1.5"
+                    />
                     <div className="flex items-center flex-wrap gap-3">
                       <span className="flex items-center gap-1 text-gold text-xs font-semibold">
                         <Star size={11} fill="currentColor" />

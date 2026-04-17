@@ -20,6 +20,7 @@ import {
   Eye,
   EyeOff,
   RotateCcw,
+  BookOpen,
 } from 'lucide-react';
 
 const TABS = [
@@ -702,6 +703,7 @@ export default function AdminDashboard() {
           Admin Dashboard
         </h1>
       </div>
+
 
       {/* Tabs */}
       <div className="grid grid-cols-4 gap-1 mb-6">

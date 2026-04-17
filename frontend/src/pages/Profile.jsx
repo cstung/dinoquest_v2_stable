@@ -75,7 +75,7 @@ function PushNotificationToggle() {
       ) : needsInstall ? (
         <div>
           <p className="text-cream/80 text-sm">Get notified about quests, rewards & achievements</p>
-          <p className="text-amber/80 text-xs mt-2">Add ChoreQuest to your Home Screen to enable notifications.</p>
+          <p className="text-amber/80 text-xs mt-2">Add DinoQuest to your Home Screen to enable notifications.</p>
         </div>
       ) : unsupported ? (
         <div>

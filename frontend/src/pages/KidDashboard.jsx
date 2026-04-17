@@ -29,8 +29,15 @@ import RankBadge from '../components/RankBadge';
 import PetLevelBadge from '../components/PetLevelBadge';
 import { QuestBoardOverlay, QuestBoardPageGlow, QuestBoardParticles, QuestBoardDecorations, QuestBoardTitle, BOARD_THEMES, getTheme } from '../components/QuestBoardTheme';
 import { renderPet, renderPetExtras, renderPetAccessory, buildPetColors } from '../components/avatar';
-
+import XPBalanceChart from '../components/XPBalanceChart';
 // ---------- helpers ----------
+
+function getLocalISO(d) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 function getMondayOfThisWeek() {
   const now = new Date();
@@ -38,11 +45,11 @@ function getMondayOfThisWeek() {
   const diff = day === 0 ? -6 : 1 - day;
   const monday = new Date(now);
   monday.setDate(now.getDate() + diff);
-  return monday.toISOString().slice(0, 10);
+  return getLocalISO(monday);
 }
 
 function todayISO() {
-  return new Date().toISOString().slice(0, 10);
+  return getLocalISO(new Date());
 }
 
 function difficultyLabel(difficulty) {
@@ -98,11 +105,11 @@ export default function KidDashboard() {
 
   // Board theme — stored in localStorage
   const [boardTheme, setBoardTheme] = useState(() =>
-    localStorage.getItem('chorequest-board-theme') || 'default'
+    localStorage.getItem('dinoquest-board-theme') || 'default'
   );
   const changeBoardTheme = (id) => {
     setBoardTheme(id);
-    localStorage.setItem('chorequest-board-theme', id);
+    localStorage.setItem('dinoquest-board-theme', id);
     setShowThemePicker(false);
   };
 
@@ -401,6 +408,8 @@ export default function KidDashboard() {
           </div>
         );
       })()}
+
+      <XPBalanceChart />
 
       {/* ── Pet Interactions ── */}
       {hasPet && (() => {

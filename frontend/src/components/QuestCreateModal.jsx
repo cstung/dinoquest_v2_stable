@@ -3,6 +3,7 @@ import { api } from '../api/client';
 import { useTheme } from '../hooks/useTheme';
 import { themedTitle, themedDescription } from '../utils/questThemeText';
 import Modal from './Modal';
+import ExpandableText from './ExpandableText';
 import {
   BookTemplate,
   Star,
@@ -218,11 +219,11 @@ export default function QuestCreateModal({
                               {tpl.suggested_points} XP
                             </span>
                           </div>
-                          {tpl.description && (
-                            <p className="text-muted text-xs line-clamp-1 mt-0.5">
-                              {themedDescription(tpl.title, tpl.description, colorTheme)}
-                            </p>
-                          )}
+                          <ExpandableText
+                            text={themedDescription(tpl.title, tpl.description, colorTheme)}
+                            lines={1}
+                            className="mt-0.5"
+                          />
                         </button>
                       ))}
                     </div>

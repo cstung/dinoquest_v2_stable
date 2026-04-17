@@ -117,6 +117,48 @@ async def get_my_stats(
     }
 
 
+@router.get("/xp-balance")
+async def get_xp_balance(
+    days: int = 30,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get daily ending XP balance over the past `days` days."""
+    today = date.today()
+    start_date = today - timedelta(days=days)
+
+    # Fetch daily net XP amounts
+    result = await db.execute(
+        select(PointTransaction)
+        .where(
+            PointTransaction.user_id == current_user.id,
+            func.date(PointTransaction.created_at) > start_date
+        )
+    )
+    txns = result.scalars().all()
+
+    dailies = {}
+    for d in range(days):
+        dailies[today - timedelta(days=d)] = 0
+
+    for txn in txns:
+        txn_date = txn.created_at.date()
+        if txn_date in dailies:
+            dailies[txn_date] += txn.amount
+
+    current_bal = current_user.points_balance
+    timeline = []
+
+    # Walk from today backwards
+    for d in range(days):
+        target_date = today - timedelta(days=d)
+        timeline.append({"date": target_date.isoformat(), "xp": current_bal})
+        current_bal -= dailies[target_date]
+    
+    timeline.reverse()
+    return timeline
+
+
 @router.get("/kids")
 async def list_kids(
     user: User = Depends(get_current_user),

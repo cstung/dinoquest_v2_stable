@@ -44,7 +44,7 @@ async def upload_file(
     with open(filepath, "wb") as f:
         f.write(contents)
 
-    return {"path": f"/api/uploads/{filename}", "filename": filename}
+    return {"url": f"/uploads/{filename}", "path": f"/uploads/{filename}", "filename": filename}
 
 
 @router.get("/{filename}")

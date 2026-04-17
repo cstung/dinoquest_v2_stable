@@ -1,6 +1,6 @@
 {
-  "name": "ChoreQuest",
-  "short_name": "ChoreQuest",
+  "name": "DinoQuest",
+  "short_name": "DinoQuest",
   "description": "Gamified family quest board",
   "start_url": "/",
   "display": "standalone",

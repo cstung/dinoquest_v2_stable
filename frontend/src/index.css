@@ -179,8 +179,8 @@ p, span, small, label, li, a, button, input, textarea, select {
 
 .sidebar-nav-button:hover,
 .nav-button:hover {
-  background: var(--nb-black);
-  color: var(--nb-yellow);
+  background: var(--color-purple);
+  color: #FFFFFF;
   box-shadow: var(--nb-shadow-sm);
   transform: translate(2px, 2px);
 }

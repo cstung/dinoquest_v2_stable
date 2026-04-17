@@ -113,6 +113,8 @@ async def daily_reset_task():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Ensure data directory exists
+    os.makedirs("/app/data/uploads", exist_ok=True)
     await init_db()
     install_push_hooks()
     async with async_session() as db:
@@ -122,7 +124,7 @@ async def lifespan(app: FastAPI):
     task.cancel()
 
 
-app = FastAPI(title="ChoreQuest", lifespan=lifespan)
+app = FastAPI(title="DinoQuest", lifespan=lifespan)
 
 # CORS - configurable via CORS_ORIGINS env var (comma-separated), empty = no cross-origin
 _cors_origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
@@ -149,6 +151,7 @@ async def security_headers(request: Request, call_next):
         "img-src 'self' data: blob:; "
         "connect-src 'self' wss: ws:; "
         "worker-src 'self'; "
+        "frame-src https://www.youtube.com https://youtube.com; "
         "frame-ancestors 'none'"
     )
     if settings.COOKIE_SECURE:
@@ -165,6 +168,7 @@ from backend.routers import (  # noqa: E402
     auth, chores, rewards, points, stats, calendar,
     notifications, admin, avatar, wishlist, events, spin, rotations, uploads, push,
     shoutouts, vacation, progress, emotes, announcements, pets,
+    examinations, admin_examinations,
 )
 
 app.include_router(auth.router)
@@ -188,6 +192,8 @@ app.include_router(progress.router)
 app.include_router(emotes.router)
 app.include_router(announcements.router)
 app.include_router(pets.router)
+app.include_router(examinations.router)
+app.include_router(admin_examinations.router)
 
 
 @app.get("/api/health")
@@ -215,7 +221,10 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
         ws_manager.disconnect(websocket, user_id)
 
 
-# Serve frontend static files
+# Serve frontend and uploads static files
+import os
+app.mount("/uploads", StaticFiles(directory="/app/data/uploads"), name="uploads")
+
 if STATIC_DIR.is_dir():
     app.mount("/assets", StaticFiles(directory=str(STATIC_DIR / "assets")), name="assets")
 
@@ -227,3 +236,8 @@ if STATIC_DIR.is_dir():
         if file_path.resolve().is_relative_to(STATIC_DIR.resolve()) and file_path.is_file():
             return FileResponse(str(file_path))
         return FileResponse(str(STATIC_DIR / "index.html"))
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("backend.main:app", host="0.0.0.0", port=8122, reload=True)

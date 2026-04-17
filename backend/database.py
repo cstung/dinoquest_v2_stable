@@ -20,7 +20,7 @@ def _prepare_sqlite_path(database_url: str) -> None:
     logger.info("Using DB at: %s", database_url)
 
 
-_prepare_sqlite_path(settings.DATABASE_URL)
+
 
 engine = create_async_engine(
     settings.DATABASE_URL,
@@ -36,6 +36,7 @@ class Base(DeclarativeBase):
 
 
 async def init_db():
+    _prepare_sqlite_path(settings.DATABASE_URL)
     async with engine.begin() as conn:
         # Enable WAL mode
         await conn.exec_driver_sql("PRAGMA journal_mode=WAL")
@@ -48,6 +49,9 @@ async def init_db():
             InviteCode, RefreshToken, PushSubscription,
             AvatarItem, UserAvatarItem,
             Shoutout, VacationPeriod,
+        )
+        from backend.examination_models import (  # noqa: F401
+            TestItem, TestQuestion, TestAnswerOption, TestAttempt, QuestionLog,
         )
         await conn.run_sync(Base.metadata.create_all)
 
@@ -66,6 +70,10 @@ async def init_db():
             ("achievements", "tier", "VARCHAR(10)"),
             ("achievements", "group_key", "VARCHAR(50)"),
             ("achievements", "sort_order", "INTEGER DEFAULT 0"),
+            ("exam_attempts", "is_locked", "BOOLEAN DEFAULT 1"),
+            ("exam_attempts", "retry_requested", "BOOLEAN DEFAULT 0"),
+            ("exam_attempts", "retry_approved", "BOOLEAN DEFAULT 0"),
+            ("exam_tests", "thumbnail_url", "VARCHAR(500)"),
         ]
         for table, col, typedef in _migrations:
             try:
