@@ -19,8 +19,6 @@ import {
 import { api } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
 import { useSettings } from '../hooks/useSettings';
-import { useTheme } from '../hooks/useTheme';
-import { themedTitle } from '../utils/questThemeText';
 import SpinWheel from '../components/SpinWheel';
 import ConfettiAnimation from '../components/ConfettiAnimation';
 import RankBadge from '../components/RankBadge';
@@ -83,7 +81,6 @@ const cardVariants = {
 export default function KidDashboard() {
   const { user, updateUser } = useAuth();
   const { spin_wheel_enabled } = useSettings();
-  const { colorTheme } = useTheme();
   const navigate = useNavigate();
 
   // data state
@@ -216,24 +213,11 @@ export default function KidDashboard() {
 
       {/* ── Header with stats ── */}
       <div className="relative overflow-hidden">
-        <QuestBoardOverlay themeId={boardTheme} />
-        <QuestBoardParticles themeId={boardTheme} />
-        
         <div className="relative z-10 space-y-4">
           <div className="flex items-center justify-between gap-2 p-1">
             <h1 className="text-nb-black text-2xl font-black uppercase tracking-tighter italic">
               Quest Board
             </h1>
-            <div className="flex items-center gap-2">
-              <QuestBoardDecorations themeId={boardTheme} />
-              <button
-                onClick={() => setShowThemePicker((v) => !v)}
-                className="game-btn bg-nb-white"
-                title="Change board theme"
-              >
-                {BOARD_THEMES.find((t) => t.id === boardTheme)?.icon || '\u2694\uFE0F'}
-              </button>
-            </div>
           </div>
 
           <DashboardStats 
@@ -251,31 +235,6 @@ export default function KidDashboard() {
         </div>
       </div>
 
-      {/* ── Board Theme Picker ── */}
-      {showThemePicker && (
-        <div className="game-panel p-4">
-          <h3 className="text-cream text-xs font-medium mb-3">Choose Board Theme</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {BOARD_THEMES.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => changeBoardTheme(t.id)}
-                className={`flex items-center gap-2 p-3 rounded-md border transition-all text-left ${
-                  boardTheme === t.id
-                    ? 'border-accent bg-accent/10'
-                    : 'border-border/50 bg-surface-raised/30 hover:border-border-light'
-                }`}
-              >
-                <span className="text-xl">{t.icon}</span>
-                <div>
-                  <p className="text-cream text-xs font-medium">{t.label}</p>
-                  <p className="text-muted text-[10px]">{t.description}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* ── Error banner ── */}
       {error && (
@@ -326,8 +285,6 @@ export default function KidDashboard() {
                   key={assignment.id}
                   assignment={assignment}
                   idx={idx}
-                  colorTheme={colorTheme}
-                  activeTheme={activeTheme}
                   onClick={() => navigate('/chores')}
                 />
               ))}
@@ -358,7 +315,7 @@ export default function KidDashboard() {
               <div className="flex flex-col sm:flex-row items-center gap-6 relative z-10">
                 {/* Pet display */}
                 <div className="flex flex-col items-center gap-3">
-                  <div className={`pet-interaction-stage p-4 bg-nb-cream border-2 border-nb-black shadow-[4px_4px_0_0_#000] ${petAction ? `pet-action-${petAction}` : ''}`}>
+                  <div className={`pet-interaction-stage p-4 bg-nb-cream outline outline-2 outline-nb-black outline-offset-[-2px] shadow-[4px_4px_0_0_#000] ${petAction ? `pet-action-${petAction}` : ''}`}>
                     <div className="avatar-idle overflow-hidden" style={{ width: 96, height: 96 }}>
                       <svg width={96} height={96} viewBox="19 13 14 14">
                         <circle cx="26" cy="20" r="6.5" fill="rgba(0,0,0,0.03)" />

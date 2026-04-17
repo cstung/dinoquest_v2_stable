@@ -66,7 +66,7 @@ export default function QuestCard({ assignment, idx, colorTheme, activeTheme, on
         </div>
 
         <div className="flex flex-col items-end justify-between self-stretch">
-          <div className="bg-nb-white border-2 border-nb-black p-1 shadow-[2px_2px_0_0_#000] group-hover:bg-nb-yellow transition-colors">
+          <div className="bg-nb-white outline outline-2 outline-nb-black outline-offset-[-2px] p-1 shadow-[2px_2px_0_0_#000] group-hover:bg-nb-yellow transition-colors">
             <ChevronRight size={16} />
           </div>
           
