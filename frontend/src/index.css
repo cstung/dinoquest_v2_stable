@@ -390,3 +390,17 @@ input, select, textarea, [class*='tag'], [class*='badge'] {
 .pet-action-play {
   animation: pet-action-play-anim 0.9s ease-in-out;
 }
+
+@keyframes floating {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.floating-title {
+  animation: floating 3s ease-in-out infinite;
+  display: inline-block;
+}
+
+.quest-card-hover {
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
