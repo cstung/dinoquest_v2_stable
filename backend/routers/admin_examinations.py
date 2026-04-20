@@ -19,7 +19,7 @@ from backend.examination_schemas import (
     AnswerOptionCreate, AnswerOptionResponse,
     TestImportRequest, AdminAttemptResponse,
 )
-from backend.routers.examinations import _get_user_performance
+from backend.routers.examinations import _get_user_performance, _cleanup_expired_attempts
 
 router = APIRouter(prefix="/api/admin/examinations", tags=["admin-examinations"])
 
@@ -497,11 +497,17 @@ async def list_test_attempts(
     """List all attempts for a specific test."""
     result = await db.execute(
         select(TestAttempt, User.display_name, User.username)
+        .options(selectinload(TestAttempt.test))
         .outerjoin(User, User.id == TestAttempt.user_id)
         .where(TestAttempt.test_id == test_id)
         .order_by(TestAttempt.created_at.desc())
     )
     rows = result.all()
+    
+    # Lazy cleanup
+    attempts = [r[0] for r in rows]
+    if await _cleanup_expired_attempts(db, attempts):
+        await db.commit()
 
     out = []
     for attempt, display_name, username in rows:

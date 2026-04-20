@@ -21,6 +21,7 @@ class TestStatus(str, enum.Enum):
     in_progress = "in_progress"
     submitted = "submitted"
     timed_out = "timed_out"
+    unfinished = "unfinished"
 
 
 class QuestionOrderMode(str, enum.Enum):

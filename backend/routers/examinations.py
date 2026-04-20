@@ -55,14 +55,20 @@ async def list_my_attempts(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List all attempts by the current user."""
+    """List all attempts by the current user. Performs lazy cleanup."""
     stmt = (
         select(TestAttempt)
+        .options(selectinload(TestAttempt.test))
         .where(TestAttempt.user_id == current_user.id)
         .order_by(TestAttempt.created_at.desc())
     )
     result = await db.execute(stmt)
-    return result.scalars().all()
+    attempts = result.scalars().all()
+    
+    if await _cleanup_expired_attempts(db, attempts):
+        await db.commit()
+        
+    return attempts
 
 
 @router.get("/attempts/{attempt_id}/logs")
@@ -152,23 +158,33 @@ async def start_test(
     if not test.questions:
         raise HTTPException(status_code=400, detail="Test has no questions")
 
-    # Check for in-progress attempt
-    existing_in_progress = await db.execute(
+    existing_in_progress_res = await db.execute(
         select(TestAttempt).where(
             TestAttempt.test_id == test_id,
             TestAttempt.user_id == current_user.id,
             TestAttempt.status == TestStatus.in_progress,
         )
     )
-    if existing_in_progress.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="You already have an active attempt for this test")
+    existing_in_progress = existing_in_progress_res.scalar_one_or_none()
+
+    if existing_in_progress:
+        # Check if it has expired
+        deadline = existing_in_progress.started_at.replace(tzinfo=timezone.utc) + timedelta(minutes=test.duration_minutes)
+        if datetime.now(timezone.utc) > deadline + timedelta(seconds=30):
+            # Auto-transition to unfinished
+            existing_in_progress.status = TestStatus.unfinished
+            existing_in_progress.finished_at = datetime.now(timezone.utc)
+            await db.commit()
+            # Now proceed to the "Check for past completed attempts" logic which will block it
+        else:
+            raise HTTPException(status_code=400, detail="You already have an active attempt for this test")
         
-    # Check for past completed attempts
+    # Check for past completed or unfinished attempts
     past_attempts = await db.execute(
         select(TestAttempt).where(
             TestAttempt.test_id == test_id,
             TestAttempt.user_id == current_user.id,
-            TestAttempt.status.in_([TestStatus.submitted, TestStatus.timed_out])
+            TestAttempt.status.in_([TestStatus.submitted, TestStatus.timed_out, TestStatus.unfinished])
         ).order_by(TestAttempt.created_at.desc())
     )
     last_attempt = past_attempts.scalars().first()
@@ -232,7 +248,7 @@ async def request_retry(
         select(TestAttempt).where(
             TestAttempt.test_id == test_id,
             TestAttempt.user_id == current_user.id,
-            TestAttempt.status.in_([TestStatus.submitted, TestStatus.timed_out])
+            TestAttempt.status.in_([TestStatus.submitted, TestStatus.timed_out, TestStatus.unfinished])
         ).order_by(TestAttempt.created_at.desc())
     )
     last_attempt = past_attempts.scalars().first()
@@ -283,6 +299,20 @@ async def log_question(
 
     await db.commit()
     return {"status": "saved"}
+
+
+@router.post("/attempts/{attempt_id}/abandon")
+async def abandon_test(
+    attempt_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Mark an in-progress attempt as unfinished."""
+    attempt = await _get_active_attempt(db, attempt_id, current_user.id)
+    attempt.status = TestStatus.unfinished
+    attempt.finished_at = datetime.now(timezone.utc)
+    await db.commit()
+    return {"status": "abandoned"}
 
 
 @router.post("/attempts/{attempt_id}/submit", response_model=AttemptSubmitResponse)
@@ -375,7 +405,9 @@ async def _get_active_attempt(
 ) -> TestAttempt:
     """Helper: fetch an in-progress attempt owned by user_id."""
     result = await db.execute(
-        select(TestAttempt).where(
+        select(TestAttempt)
+        .options(selectinload(TestAttempt.test))
+        .where(
             TestAttempt.id == attempt_id,
             TestAttempt.user_id == user_id,
         )
@@ -383,9 +415,38 @@ async def _get_active_attempt(
     attempt = result.scalar_one_or_none()
     if attempt is None:
         raise HTTPException(status_code=404, detail="Attempt not found")
+        
+    # Check for expiration
+    if attempt.status == TestStatus.in_progress:
+        deadline = attempt.started_at.replace(tzinfo=timezone.utc) + timedelta(minutes=attempt.test.duration_minutes)
+        if datetime.now(timezone.utc) > deadline + timedelta(seconds=30):
+            attempt.status = TestStatus.unfinished
+            attempt.finished_at = datetime.now(timezone.utc)
+            await db.commit()
+            raise HTTPException(status_code=400, detail="Attempt already submitted")
+
     if attempt.status != TestStatus.in_progress:
         raise HTTPException(status_code=400, detail="Attempt already submitted")
     return attempt
+
+
+async def _cleanup_expired_attempts(db: AsyncSession, attempts: list[TestAttempt]) -> bool:
+    """
+    Lazy cleanup: check for expired in_progress attempts in the list and mark them unfinished.
+    Returns True if any attempts were updated.
+    """
+    now = datetime.now(timezone.utc)
+    updated = False
+    for a in attempts:
+        if a.status == TestStatus.in_progress:
+            # Need to ensure a.test is loaded
+            if a.test:
+                deadline = a.started_at.replace(tzinfo=timezone.utc) + timedelta(minutes=a.test.duration_minutes)
+                if now > deadline + timedelta(seconds=30):
+                    a.status = TestStatus.unfinished
+                    a.finished_at = now
+                    updated = True
+    return updated
 
 
 async def _get_user_performance(db: AsyncSession, test_id: int, user_id: int):

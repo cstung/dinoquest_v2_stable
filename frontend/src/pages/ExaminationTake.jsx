@@ -73,6 +73,36 @@ export default function ExaminationTake() {
     }
   }, [currentIdx, phase]);
 
+  // Handle abandonment
+  useEffect(() => {
+    const handleAbandon = () => {
+      if (phase === 'testing' && attemptId) {
+        const url = `/api/examinations/attempts/${attemptId}/abandon`;
+        const token = localStorage.getItem('dinoquest_access_token');
+        const headers = {
+          'Authorization': token ? `Bearer ${token}` : '',
+        };
+        fetch(url, { method: 'POST', keepalive: true, headers }).catch(() => {});
+      }
+    };
+
+    const onBeforeUnload = (e) => {
+      if (phase === 'testing') {
+        handleAbandon();
+      }
+    };
+
+    window.addEventListener('beforeunload', onBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', onBeforeUnload);
+      // Also handle SPA navigation
+      if (phase === 'testing' && attemptId) {
+        api(`/api/examinations/attempts/${attemptId}/abandon`, { method: 'POST' }).catch(() => {});
+      }
+    };
+  }, [phase, attemptId]);
+
   const startTest = useCallback(async () => {
     try {
       setPhase('loading');

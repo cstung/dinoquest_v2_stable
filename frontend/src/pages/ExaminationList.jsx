@@ -62,10 +62,15 @@ export default function ExaminationList() {
   }
 
   function getRetryState(testId) {
-    const past = attempts.filter(a => a.test_id === testId && (a.status === 'submitted' || a.status === 'timed_out')).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+    const past = attempts.filter(a => a.test_id === testId && (a.status === 'submitted' || a.status === 'timed_out' || a.status === 'unfinished')).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
     if (!past.length) return { hasPast: false, requested: false, approved: false };
     const last = past[0]; // most recent
-    return { hasPast: true, requested: last.retry_requested, approved: last.retry_approved };
+    return { 
+      hasPast: true, 
+      requested: last.retry_requested, 
+      approved: last.retry_approved,
+      status: last.status 
+    };
   }
 
   function hasActiveAttempt(testId) {
@@ -92,7 +97,7 @@ export default function ExaminationList() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
+    <div className="max-w-3xl mx-auto w-full px-4 sm:px-0">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 bg-[#7C3AED] flex items-center justify-center border-2 border-[#0A0A0A] shadow-[4px_4px_0_#0A0A0A]">
@@ -122,7 +127,7 @@ export default function ExaminationList() {
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3 w-full">
           {tests.map((test) => {
             const best = bestScore(test.id);
             const active = hasActiveAttempt(test.id);
@@ -130,10 +135,19 @@ export default function ExaminationList() {
             return (
               <div
                 key={test.id}
-                className="game-panel p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 cursor-pointer"
+                className="game-panel p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 cursor-pointer w-full"
                 onClick={() => navigate(`/examinations/${test.id}/take`)}
                 id={`exam-card-${test.id}`}
               >
+                {test.thumbnail_url && (
+                  <div className="flex-shrink-0 hidden sm:block">
+                    <img
+                      src={test.thumbnail_url}
+                      alt="thumbnail"
+                      className="w-16 h-16 object-cover border-2 border-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A]"
+                    />
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <h3 className="font-bold text-base truncate">{test.title}</h3>
                   {test.description && (
@@ -161,20 +175,16 @@ export default function ExaminationList() {
                         <Loader2 size={12} className="animate-spin" /> In Progress
                       </span>
                     )}
+                    {!active && retryState.hasPast && retryState.status === 'unfinished' && (
+                      <span className="flex items-center gap-1 text-xs font-mono bg-[#FF4D4D] text-white border-2 border-[#0A0A0A] px-2 py-0.5">
+                        <AlertCircle size={12} /> Unfinished
+                      </span>
+                    )}
                   </div>
                 </div>
 
-                {test.thumbnail_url && (
-                  <div className="flex-shrink-0 ml-4 hidden sm:block">
-                    <img
-                      src={test.thumbnail_url}
-                      alt="thumbnail"
-                      className="w-16 h-16 object-cover border-2 border-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A]"
-                    />
-                  </div>
-                )}
 
-                <div className="flex flex-col gap-2 flex-shrink-0">
+                <div className="flex flex-col gap-2 flex-shrink-0 w-full sm:w-auto sm:min-w-[160px]">
                   {(!active && retryState.hasPast && !retryState.requested) ? (
                     <button
                       className="game-btn bg-[#FFF0F0] border-2 border-[#0A0A0A] flex items-center justify-center gap-2 !py-2 !px-4 hover:bg-[#FF4D4D] hover:text-white"
