@@ -10,7 +10,7 @@ RUN chmod -R +x node_modules/.bin && npm run build
 FROM python:3.12-slim
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y --no-install-recommends gosu && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends gosu ca-certificates ffmpeg && rm -rf /var/lib/apt/lists/*
 RUN groupadd -g 1000 appuser && useradd -u 1000 -g appuser -m appuser
 
 COPY requirements.txt .

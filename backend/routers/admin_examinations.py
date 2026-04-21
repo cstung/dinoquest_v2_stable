@@ -12,6 +12,7 @@ from backend.models import User
 from backend.dependencies import require_admin
 from backend.examination_models import (
     TestItem, TestQuestion, TestAnswerOption, TestAttempt, QuestionLog,
+    PenaltyMode, QuestionOrderMode,
     YouTubeGenerationLog,
 )
 from backend.examination_schemas import (
@@ -23,10 +24,18 @@ from backend.examination_schemas import (
 )
 from backend.routers.examinations import _get_user_performance, _cleanup_expired_attempts
 from backend.services.youtube_service import get_video_data
-from backend.services.gpt_question_generator import generate_questions
+from backend.services.gpt_question_generator import generate_questions, normalize_questions
 import backend.config as config
 
 router = APIRouter(prefix="/api/admin/examinations", tags=["admin-examinations"])
+
+
+def _coerce_non_negative_int(value, default: int) -> int:
+    try:
+        coerced = int(value)
+    except (TypeError, ValueError):
+        return default
+    return max(0, coerced)
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -468,7 +477,10 @@ async def generate_from_youtube_endpoint(
     if not video_data["subtitle_available"]:
         raise HTTPException(
             status_code=422,
-            detail="This video has no subtitles. Please try a different video."
+            detail=(
+                "This video has no subtitles. "
+                "Auto-generated captions may be disabled or unavailable for this video."
+            )
         )
 
     # 3. Generate questions
@@ -513,7 +525,7 @@ async def generate_from_youtube_endpoint(
         video_title=video_data["video_title"],
         video_id=video_data["video_id"],
         thumbnail_url=video_data["thumbnail_url"],
-        subtitle_available=True,
+        subtitle_available=video_data["subtitle_available"],
         questions=questions,
         exam_draft=exam_draft
     )
@@ -528,27 +540,59 @@ async def save_generated_test(
     """
     Step 2: Save the reviewed questions as a real test.
     """
-    # 1. Create the test header
     config_data = body.exam_config
+    if not body.questions:
+        raise HTTPException(status_code=422, detail="At least one question is required.")
+
+    thumbnail_url = config_data.get("thumbnail_url") or (
+        body.questions[0].get("media_url") if body.questions else None
+    )
+    normalized_questions = normalize_questions(
+        body.questions,
+        thumbnail_url=thumbnail_url or "",
+        expected_count=len(body.questions),
+    )
+    if len(normalized_questions) != len(body.questions):
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "One or more edited questions are invalid. "
+                "Each question needs 4 non-empty options and at least one correct answer."
+            ),
+        )
+
+    penalty_value = _coerce_non_negative_int(config_data.get("penalty_value"), 0)
+    duration_minutes = _coerce_non_negative_int(config_data.get("duration_minutes"), 15) or 15
+    passing_score = _coerce_non_negative_int(config_data.get("passing_score"), 5000)
+    question_order = (
+        QuestionOrderMode.random
+        if config_data.get("is_randomized")
+        else QuestionOrderMode.fixed
+    )
+    penalty_mode = PenaltyMode.absolute if penalty_value > 0 else PenaltyMode.none
+
     test = TestItem(
         title=config_data.get("title", "Generated Test"),
         description=f"Generated from YouTube video.",
-        duration_minutes=config_data.get("duration_minutes", 15),
-        passing_score=config_data.get("passing_score", 5000),
-        thumbnail_url=config_data.get("thumbnail_url"),
+        duration_minutes=duration_minutes,
+        passing_score=passing_score,
+        question_order=question_order,
+        penalty_mode=penalty_mode,
+        penalty_value=penalty_value,
+        thumbnail_url=thumbnail_url,
         created_by=admin.id,
-        is_published=True
+        is_published=bool(config_data.get("is_published", True)),
     )
     db.add(test)
     await db.flush()
 
-    # 2. Add questions (reuse logic similar to bulk import)
-    for idx, item in enumerate(body.questions):
+    for idx, item in enumerate(normalized_questions):
         q = TestQuestion(
             test_id=test.id,
             question_text=item["question_text"],
-            media_type="image",
+            media_type=item["media_type"],
             media_url=item.get("media_url"),
+            explanation=item.get("explanation"),
             weight=item.get("weight", 1),
             sort_order=idx,
             allow_multiple=item.get("allow_multiple", False),

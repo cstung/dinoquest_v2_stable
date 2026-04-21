@@ -43,7 +43,7 @@ class QuestionCreate(BaseModel):
     weight: int = Field(default=1, ge=1)
     sort_order: int = 0
     allow_multiple: bool = False
-    options: list[AnswerOptionCreate] = []
+    options: list[AnswerOptionCreate] = Field(default_factory=list)
 
 
 class QuestionUpdate(BaseModel):
@@ -66,7 +66,7 @@ class QuestionResponse(BaseModel):
     weight: int
     sort_order: int
     allow_multiple: bool
-    options: list[AnswerOptionResponse] = []
+    options: list[AnswerOptionResponse] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 
@@ -80,7 +80,7 @@ class QuestionPublic(BaseModel):
     weight: int
     sort_order: int
     allow_multiple: bool
-    options: list[AnswerOptionPublic] = []
+    options: list[AnswerOptionPublic] = Field(default_factory=list)
 
     model_config = {"from_attributes": True}
 
@@ -132,7 +132,7 @@ class TestResponse(BaseModel):
 
 
 class TestDetailResponse(TestResponse):
-    questions: list[QuestionResponse] = []
+    questions: list[QuestionResponse] = Field(default_factory=list)
 
 
 class TestPublicResponse(BaseModel):
@@ -156,12 +156,12 @@ class AttemptStartResponse(BaseModel):
     test_id: int
     started_at: datetime
     duration_minutes: int
-    questions: list[QuestionPublic] = []
+    questions: list[QuestionPublic] = Field(default_factory=list)
 
 
 class QuestionLogRequest(BaseModel):
     question_id: int
-    selected_option_ids: list[int] = []
+    selected_option_ids: list[int] = Field(default_factory=list)
     entry_time: datetime | None = None
     exit_time: datetime | None = None
     time_spent_seconds: float | None = None
@@ -213,7 +213,7 @@ class QuestionImportItem(BaseModel):
     explanation: str | None = None
     weight: int = 1
     allow_multiple: bool = False
-    options: list[AnswerOptionCreate] = []
+    options: list[AnswerOptionCreate] = Field(default_factory=list)
 
 
 class TestImportRequest(BaseModel):
@@ -234,7 +234,7 @@ class YouTubeGenerateRequest(BaseModel):
     youtube_url: str
     n_questions: int = Field(ge=1, le=30, default=10)
     difficulty: str = Field(default="medium", pattern="^(easy|medium|hard)$")
-    exam_config: dict = {}  # title, passing_score, duration, is_randomized, penalty_value
+    exam_config: dict = Field(default_factory=dict)  # title, passing_score, duration, is_randomized, penalty_value
 
 
 class YouTubeGenerateResponse(BaseModel):
