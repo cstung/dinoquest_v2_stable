@@ -308,6 +308,15 @@ export default function AdminExaminations() {
           >
             <AlertCircle size={14} /> Retry Requests
           </button>
+          <button
+            className="game-btn game-btn-purple flex items-center gap-1"
+            onClick={() => {
+              setEditingTest(null);
+              setForm(defaultForm());
+              setShowForm(true);
+            }}
+            id="btn-create-test"
+          >
             <Plus size={14} /> New Test
           </button>
           <button
