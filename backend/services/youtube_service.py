@@ -43,6 +43,12 @@ async def get_video_data(youtube_url: str) -> dict:
             "outtmpl": os.path.join(tmpdir, "%(id)s.%(ext)s"),
             "quiet": True,
             "no_warnings": True,
+            "nocheckcertificate": True, # Speed up SSL
+            "socket_timeout": 15,       # Don't wait forever
+            "retries": 1,
+            "geo_bypass": True,
+            "format": "bestaudio/best", # We only need audio for metadata/subs
+            "no_color": True,
         }
         
         try:
@@ -51,7 +57,11 @@ async def get_video_data(youtube_url: str) -> dict:
             loop = asyncio.get_event_loop()
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 logger.info("Extracting YouTube info for: %s", youtube_url)
-                info = await loop.run_in_executor(None, lambda: ydl.extract_info(youtube_url, download=True))
+                # Defensive timeout of 40s total for info extraction
+                info = await asyncio.wait_for(
+                    loop.run_in_executor(None, lambda: ydl.extract_info(youtube_url, download=True)),
+                    timeout=40.0
+                )
                 video_title = info.get("title", "Unknown Video")
                 logger.info("YouTube metadata fetched: %s", video_title)
             
