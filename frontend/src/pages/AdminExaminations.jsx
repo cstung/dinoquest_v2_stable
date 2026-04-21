@@ -1188,6 +1188,7 @@ export default function AdminExaminations() {
             </div>
           )}
         </Modal>
+      )}
       {showGPTModal && (
         <GPTTestMakerModal 
           isOpen={showGPTModal}
