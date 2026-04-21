@@ -18,14 +18,18 @@ const USER_ERRORS = {
   "Invalid YouTube URL format": "Please paste a valid YouTube link.",
   "This video has no subtitles.": "This video has no subtitles. Try a video that has auto-generated captions enabled.",
   "Daily limit": "You've reached today's generation limit. Try again tomorrow.",
+  "timeout": "The request timed out. The video might be too long or the AI service is busy. Try again with fewer questions.",
+  "502": "The AI service is temporarily unavailable. Please try again in a moment.",
+  "504": "The server took too long to respond. Try a shorter video.",
 };
 
 function friendlyError(detail) {
   if (typeof detail !== 'string') return "Something went wrong. Please try again.";
+  const lowerDetail = detail.toLowerCase();
   for (const [key, msg] of Object.entries(USER_ERRORS)) {
-    if (detail.includes(key)) return msg;
+    if (lowerDetail.includes(key.toLowerCase())) return msg;
   }
-  return detail || "Something went wrong. Please try again.";
+  return detail || "An unexpected error occurred. Please try again.";
 }
 
 export default function GPTTestMakerModal({ isOpen, onClose, onSaved }) {

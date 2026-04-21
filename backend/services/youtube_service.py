@@ -50,8 +50,10 @@ async def get_video_data(youtube_url: str) -> dict:
             # We run it in a thread to keep the event loop free
             loop = asyncio.get_event_loop()
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                logger.info("Extracting YouTube info for: %s", youtube_url)
                 info = await loop.run_in_executor(None, lambda: ydl.extract_info(youtube_url, download=True))
                 video_title = info.get("title", "Unknown Video")
+                logger.info("YouTube metadata fetched: %s", video_title)
             
             # Find the subtitle file
             vtt_file = None
@@ -71,10 +73,12 @@ async def get_video_data(youtube_url: str) -> dict:
             
             # 4. Parse .vtt to plain text
             subtitle_text = _parse_vtt(vtt_file)
+            logger.info("Raw subtitles extracted: %d chars", len(subtitle_text))
             
             # 5. Truncate to 12,000 characters
             if len(subtitle_text) > 12000:
                 subtitle_text = subtitle_text[:12000] + "\n[transcript truncated at 12,000 characters]"
+                logger.info("Subtitles truncated to 12,000 chars for AI efficiency")
             
             return {
                 "video_id": video_id,

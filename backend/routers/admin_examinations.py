@@ -431,8 +431,13 @@ async def generate_from_youtube_endpoint(
 ):
     """
     Step 1: Extract subtitles and generate questions with GPT-4o.
-    This does NOT save the test yet.
     """
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info("AI Generation Start: URL=%s, questions=%d, difficulty=%s", 
+                body.youtube_url, body.n_questions, body.difficulty)
+    
+    start_time = datetime.now(timezone.utc)
     # 1. Check daily rate limit
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     stmt = (
@@ -500,6 +505,9 @@ async def generate_from_youtube_endpoint(
     # Ensure some defaults if missing
     exam_draft.setdefault("passing_score", 5000)
     exam_draft.setdefault("duration_minutes", 15)
+
+    duration = (datetime.now(timezone.utc) - start_time).total_seconds()
+    logger.info("AI Generation Complete: %d questions in %.2fs", len(questions), duration)
 
     return YouTubeGenerateResponse(
         video_title=video_data["video_title"],

@@ -29,26 +29,32 @@ async def generate_questions(
     - Weight reflects difficulty: easy=1, medium=2, hard=3-5.
     - Vary question types: factual recall, cause-effect, inference, vocabulary.
 
-    Return ONLY a JSON array. No markdown, no explanation, no wrapping object.
-    Schema for each element:
+    Return ONLY a JSON object with a "questions" key containing the array of questions. 
+    Strictly follow this structure: 
     {{
-      "question_text": "string",
-      "media_type": "image",
-      "media_url": "{thumbnail_url}",
-      "weight": <int 1-5>,
-      "allow_multiple": false,
-      "options": [
-        {{"option_text": "string", "is_correct": true, "sort_order": 0}},
-        {{"option_text": "string", "is_correct": false, "sort_order": 1}},
-        {{"option_text": "string", "is_correct": false, "sort_order": 2}},
-        {{"option_text": "string", "is_correct": false, "sort_order": 3}}
+      "questions": [
+        {{
+          "question_text": "string",
+          "media_type": "image",
+          "media_url": "{thumbnail_url}",
+          "weight": <int 1-5>,
+          "allow_multiple": false,
+          "options": [
+            {{"option_text": "string", "is_correct": true, "sort_order": 0}},
+            {{"option_text": "string", "is_correct": false, "sort_order": 1}},
+            {{"option_text": "string", "is_correct": false, "sort_order": 2}},
+            {{"option_text": "string", "is_correct": false, "sort_order": 3}}
+          ]
+        }}
       ]
     }}"""
 
-    user_prompt = f"Video title: {video_title}\n\nTranscript:\n{subtitle_text}\n\nGenerate {n_questions} questions."
+    user_prompt = f"Video title: {video_title}\n\nTranscript:\n{subtitle_text}\n\nGenerate {n_questions} questions about this video."
 
     async def call_gpt(strict=False):
-        prompt_suffix = "\nIMPORTANT: Return ONLY a raw JSON array starting with [ and ending with ]." if strict else ""
+        prompt_suffix = "\nIMPORTANT: Ensure the output is valid JSON and contains exactly the 'questions' key." if strict else ""
+        logger.info("Starting OpenAI request (model=%s, questions=%d)", os.getenv("OPENAI_MODEL", "gpt-4o"), n_questions)
+        
         response = await client.chat.completions.create(
             model=os.getenv("OPENAI_MODEL", "gpt-4o"),
             messages=[
@@ -58,7 +64,10 @@ async def generate_questions(
             response_format={"type": "json_object"},
             temperature=0.7,
             max_tokens=4000,
+            timeout=60.0, # 60s timeout to prevent hanging the whole server
         )
+        logger.info("OpenAI response received. Tokens: prompt=%d, completion=%d", 
+                    response.usage.prompt_tokens, response.usage.completion_tokens)
         return response.choices[0].message.content
 
     try:
