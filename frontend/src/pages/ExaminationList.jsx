@@ -97,7 +97,7 @@ export default function ExaminationList() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto w-full px-4 sm:px-0">
+    <div className="max-w-5xl mx-auto w-full px-4 sm:px-0">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className="w-10 h-10 bg-[#7C3AED] flex items-center justify-center border-2 border-[#0A0A0A] shadow-[4px_4px_0_#0A0A0A]">
@@ -127,7 +127,7 @@ export default function ExaminationList() {
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3 w-full">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {tests.map((test) => {
             const best = bestScore(test.id);
             const active = hasActiveAttempt(test.id);
@@ -135,98 +135,103 @@ export default function ExaminationList() {
             return (
               <div
                 key={test.id}
-                className="game-panel p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4 cursor-pointer w-full"
+                className="game-panel flex flex-col cursor-pointer hover:border-[#7C3AED]/40 transition-colors overflow-hidden h-full"
                 onClick={() => navigate(`/examinations/${test.id}/take`)}
                 id={`exam-card-${test.id}`}
               >
                 {test.thumbnail_url && (
-                  <div className="flex-shrink-0 hidden sm:block">
+                  <div className="relative">
                     <img
                       src={test.thumbnail_url}
                       alt="thumbnail"
-                      className="w-16 h-16 object-cover border-2 border-[#0A0A0A] shadow-[2px_2px_0_#0A0A0A]"
+                      className="w-full h-40 object-cover border-b-2 border-[#0A0A0A]"
                     />
+                    {active && (
+                      <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-[#FFE500] border-2 border-[#0A0A0A] px-2 py-1 text-[10px] font-bold shadow-[2px_2px_0_#0A0A0A]">
+                        <Loader2 size={12} className="animate-spin" />
+                        IN PROGRESS
+                      </div>
+                    )}
                   </div>
                 )}
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-bold text-base truncate">{test.title}</h3>
+                
+                <div className="p-4 flex flex-col flex-1 gap-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <h3 className="font-bold text-base line-clamp-1">{test.title}</h3>
+                    {best !== null && (
+                      <div className="flex items-center gap-1 text-[#00A95C] flex-shrink-0" title="Best Score">
+                        <Trophy size={14} />
+                      </div>
+                    )}
+                  </div>
+
                   {test.description && (
                     <ExpandableText
                       text={test.description}
                       lines={2}
-                      className="mt-0.5"
+                      className="text-sm opacity-80"
                     />
                   )}
 
-                  <div className="flex items-center gap-3 mt-2 flex-wrap">
-                    <span className="flex items-center gap-1 text-xs font-mono bg-[#FFF7D1] border-2 border-[#0A0A0A] px-2 py-0.5">
-                      <Clock size={12} /> {test.duration_minutes} min
+                  <div className="flex flex-wrap gap-2 mt-2">
+                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-medium border-2 border-[#0A0A0A] bg-[#FFF7D1]">
+                      <Clock size={12} /> {test.duration_minutes}m
                     </span>
-                    <span className="flex items-center gap-1 text-xs font-mono bg-[#FFF7D1] border-2 border-[#0A0A0A] px-2 py-0.5">
-                      <BookOpen size={12} /> {test.question_count} Q
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-medium border-2 border-[#0A0A0A] bg-[#FFF7D1]">
+                      <BookOpen size={12} /> {test.question_count} Qs
                     </span>
                     {best !== null && (
-                      <span className="flex items-center gap-1 text-xs font-mono bg-[#E0FFE6] border-2 border-[#0A0A0A] px-2 py-0.5">
-                        <Trophy size={12} /> Best: {best.toLocaleString()} XP
-                      </span>
-                    )}
-                    {active && (
-                      <span className="flex items-center gap-1 text-xs font-mono bg-[#FFE500] border-2 border-[#0A0A0A] px-2 py-0.5">
-                        <Loader2 size={12} className="animate-spin" /> In Progress
-                      </span>
-                    )}
-                    {!active && retryState.hasPast && retryState.status === 'unfinished' && (
-                      <span className="flex items-center gap-1 text-xs font-mono bg-[#FF4D4D] text-white border-2 border-[#0A0A0A] px-2 py-0.5">
-                        <AlertCircle size={12} /> Unfinished
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-medium border-2 border-[#0A0A0A] bg-[#E0FFE6]">
+                        <Trophy size={12} /> {best.toLocaleString()} XP
                       </span>
                     )}
                   </div>
-                </div>
 
-
-                <div className="flex flex-col gap-2 flex-shrink-0 w-full sm:w-auto sm:min-w-[160px]">
-                  {(!active && retryState.hasPast && !retryState.requested) ? (
-                    <button
-                      className="game-btn bg-[#FFF0F0] border-2 border-[#0A0A0A] flex items-center justify-center gap-2 !py-2 !px-4 hover:bg-[#FF4D4D] hover:text-white"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        requestRetry(test.id);
-                      }}
-                    >
-                      Request Retry
-                    </button>
-                  ) : (!active && retryState.hasPast && retryState.requested && !retryState.approved) ? (
-                    <button
-                      className="game-btn bg-[#FFF7D1] border-2 border-[#0A0A0A] opacity-70 cursor-not-allowed flex items-center justify-center gap-2 !py-2 !px-4"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <Loader2 size={14} className="animate-spin" /> Waiting...
-                    </button>
-                  ) : (
-                    <button
-                      className="game-btn game-btn-purple flex items-center justify-center gap-2 !py-2 !px-4"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/examinations/${test.id}/take`);
-                      }}
-                      id={`start-exam-${test.id}`}
-                    >
-                      {active ? 'Continue' : 'Start Test'}
-                      <ArrowRight size={14} />
-                    </button>
-                  )}
-                  {best !== null && (
-                    <button
-                      className="game-btn bg-white border-2 border-[#0A0A0A] flex items-center justify-center gap-2 !py-2 !px-4 hover:bg-[#7C3AED] hover:text-white"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedPerformanceTest(test);
-                        setShowPerformance(true);
-                      }}
-                    >
-                      <BarChart2 size={14} /> Progression
-                    </button>
-                  )}
+                  <div className="mt-auto pt-4 flex flex-col gap-2">
+                    {(!active && retryState.hasPast && !retryState.requested) ? (
+                      <button
+                        className="game-btn bg-[#FFF0F0] border-2 border-[#0A0A0A] flex items-center justify-center gap-2 !py-2 !px-4 hover:bg-[#FF4D4D] hover:text-white w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          requestRetry(test.id);
+                        }}
+                      >
+                        Request Retry
+                      </button>
+                    ) : (!active && retryState.hasPast && retryState.requested && !retryState.approved) ? (
+                      <button
+                        className="game-btn bg-[#FFF7D1] border-2 border-[#0A0A0A] opacity-70 cursor-not-allowed flex items-center justify-center gap-2 !py-2 !px-4 w-full"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Loader2 size={14} className="animate-spin" /> Waiting...
+                      </button>
+                    ) : (
+                      <button
+                        className="game-btn game-btn-purple flex items-center justify-center gap-2 !py-2 !px-4 w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/examinations/${test.id}/take`);
+                        }}
+                        id={`start-exam-${test.id}`}
+                      >
+                        {active ? 'Continue' : 'Start Test'}
+                        <ArrowRight size={14} />
+                      </button>
+                    )}
+                    
+                    {best !== null && (
+                      <button
+                        className="game-btn bg-white border-2 border-[#0A0A0A] flex items-center justify-center gap-2 !py-2 !px-4 hover:bg-[#7C3AED] hover:text-white w-full"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedPerformanceTest(test);
+                          setShowPerformance(true);
+                        }}
+                      >
+                        <BarChart2 size={14} /> Progression
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -240,7 +245,7 @@ export default function ExaminationList() {
           <h2 className="font-bold text-lg mb-3 flex items-center gap-2">
             <CheckCircle size={18} /> Past Results
           </h2>
-          <div className="flex flex-col gap-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             {attempts
               .filter((a) => a.score !== null)
               .slice(0, 10)
@@ -250,28 +255,27 @@ export default function ExaminationList() {
                 return (
                   <div
                     key={a.id}
-                    className="game-panel p-3 flex items-center justify-between"
+                    className="game-panel p-4 flex items-center justify-between gap-3"
                   >
-                    <div>
-                      <p className="font-medium text-sm">{testTitle}</p>
-                      <p className="text-xs font-mono opacity-60">
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold text-sm truncate">{testTitle}</p>
+                      <p className="text-[10px] font-mono opacity-60 mt-0.5">
                         {new Date(a.finished_at).toLocaleDateString()} ·{' '}
-                        {a.status === 'timed_out' ? 'Timed Out' : 'Submitted'}
+                        {a.status === 'timed_out' ? 'TIMED OUT' : 'SUBMITTED'}
                       </p>
                     </div>
-                    <div className="text-right flex items-center justify-end gap-3">
-                      <div>
-                        <p className="font-bold text-base">
-                          {a.score.toLocaleString()}
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      <div className="text-right">
+                        <p className="font-bold text-sm text-[#00A95C]">
+                          +{a.score.toLocaleString()} XP
                         </p>
-                        <p className="text-xs font-mono opacity-60">/ 10,000 XP</p>
                       </div>
                       <button
-                        className="p-1.5 border-2 border-[#0A0A0A] bg-white hover:bg-[#7C3AED] hover:text-white"
+                        className="p-1.5 border-2 border-[#0A0A0A] bg-white hover:bg-[#7C3AED] hover:text-white aspect-square flex items-center justify-center"
                         title="View Detailed Log"
                         onClick={() => loadLogs(a.id)}
                       >
-                        <FileText size={16} />
+                        <FileText size={14} />
                       </button>
                     </div>
                   </div>

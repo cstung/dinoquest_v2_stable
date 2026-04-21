@@ -127,7 +127,7 @@ export default function Layout({ children }) {
           <span className="text-[#0A0A0A] text-[15px] font-semibold">DinoQuest</span>
         </div>
 
-        <nav className="flex flex-col gap-0.5 px-3 mt-1 flex-1">
+        <nav className="flex flex-col gap-1.5 px-3 mt-1 flex-1">
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -135,7 +135,7 @@ export default function Layout({ children }) {
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`sidebar-nav-button flex items-center gap-2.5 px-3 py-2 text-left text-sm ${active ? 'active-nav' : ''}`}
+                className={`sidebar-nav-button flex items-center gap-2.5 px-3 py-2.5 text-left text-sm ${active ? 'active-nav' : ''}`}
               >
                 <Icon size={16} />
                 <span className="font-medium">{item.label}</span>
