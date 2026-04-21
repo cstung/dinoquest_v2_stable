@@ -76,7 +76,7 @@ export default function Modal({ isOpen, onClose, title, children, actions }) {
           >
             <div className="flex items-start justify-between gap-3 mb-4">
               {title && (
-                <h2 className="text-cream text-base font-semibold">
+                <h2 className="text-[#0A0A0A] text-base font-semibold">
                   {title}
                 </h2>
               )}
@@ -89,7 +89,7 @@ export default function Modal({ isOpen, onClose, title, children, actions }) {
               </button>
             </div>
 
-            <div className="text-cream text-sm">{children}</div>
+            <div className="text-[#0A0A0A] text-sm">{children}</div>
 
             {actions && actions.length > 0 && (
               <div className="flex items-center justify-end gap-2 mt-5 pt-3 border-t border-border">
