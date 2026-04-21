@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = "gpt-4o"
     YT_DLP_CACHE_DIR: str = "/tmp/yt-dlp-cache"
     YOUTUBE_GENERATE_DAILY_LIMIT: int = 10
+    YOUTUBE_OEMBED_TIMEOUT_SECONDS: float = 10.0
+    YOUTUBE_TRANSCRIPT_TIMEOUT_SECONDS: float = 20.0
+    YOUTUBE_TRANSCRIPT_MAX_CONCURRENCY: int = 4
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 

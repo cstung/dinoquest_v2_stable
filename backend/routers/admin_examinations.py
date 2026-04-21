@@ -475,6 +475,17 @@ async def generate_from_youtube_endpoint(
         raise HTTPException(status_code=500, detail=f"YouTube extraction failed: {str(e)}")
 
     if not video_data["subtitle_available"]:
+        subtitle_error = video_data.get("subtitle_error")
+        if subtitle_error == "timeout":
+            raise HTTPException(
+                status_code=504,
+                detail="YouTube transcript fetch timeout. Try a shorter video or try again later.",
+            )
+        if subtitle_error == "error":
+            raise HTTPException(
+                status_code=502,
+                detail="YouTube transcript fetch error. Try again later.",
+            )
         raise HTTPException(
             status_code=422,
             detail=(

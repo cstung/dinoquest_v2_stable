@@ -1,4 +1,5 @@
 import html
+import asyncio
 import logging
 import re
 from pathlib import Path
@@ -38,6 +39,10 @@ class TranscriptUnavailableError(RuntimeError):
     """Raised when a video has no accessible transcript."""
 
 
+class TranscriptFetchError(RuntimeError):
+    """Raised when transcript retrieval fails for non-content reasons."""
+
+
 TRANSCRIPT_EXCEPTIONS = (
     NoTranscriptFound,
     TranscriptsDisabled,
@@ -45,6 +50,27 @@ TRANSCRIPT_EXCEPTIONS = (
     VideoUnavailable,
     TranscriptUnavailableError,
 )
+
+
+def _oembed_timeout() -> httpx.Timeout:
+    # Some environments block/slow YouTube; keep connect time tight so UI doesn't hang.
+    import backend.config as config
+    seconds = float(getattr(config.settings, "YOUTUBE_OEMBED_TIMEOUT_SECONDS", 10.0))
+    return httpx.Timeout(connect=seconds, read=seconds, write=seconds, pool=seconds)
+
+
+def _transcript_timeout_seconds() -> float:
+    import backend.config as config
+    return float(getattr(config.settings, "YOUTUBE_TRANSCRIPT_TIMEOUT_SECONDS", 20.0))
+
+
+def _transcript_max_concurrency() -> int:
+    import backend.config as config
+    value = int(getattr(config.settings, "YOUTUBE_TRANSCRIPT_MAX_CONCURRENCY", 4))
+    return max(1, min(value, 32))
+
+
+_transcript_semaphore = asyncio.Semaphore(_transcript_max_concurrency())
 
 
 async def get_video_data(youtube_url: str) -> dict:
@@ -56,7 +82,7 @@ async def get_video_data(youtube_url: str) -> dict:
     thumbnail_url = f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
 
     try:
-        async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+        async with httpx.AsyncClient(timeout=_oembed_timeout(), follow_redirects=True) as client:
             oembed_url = (
                 "https://www.youtube.com/oembed"
                 f"?url=https://www.youtube.com/watch?v={video_id}&format=json"
@@ -76,16 +102,29 @@ async def get_video_data(youtube_url: str) -> dict:
 
     subtitle_text = ""
     subtitle_available = False
+    subtitle_error: str | None = None
 
     logger.info("Fetching transcript for video_id=%s", video_id)
     try:
-        transcript_data = _fetch_transcript(video_id)
+        # youtube-transcript-api is synchronous and can block indefinitely on network issues.
+        # Offload to a thread and enforce an overall timeout so the request doesn't hang.
+        async with _transcript_semaphore:
+            transcript_data = await asyncio.wait_for(
+                asyncio.to_thread(_fetch_transcript, video_id),
+                timeout=_transcript_timeout_seconds(),
+            )
         subtitle_text = _transcript_to_text(transcript_data)
         subtitle_available = bool(subtitle_text)
         if subtitle_available:
             logger.info("Transcript fetched for %s (%d chars)", video_id, len(subtitle_text))
+        else:
+            subtitle_error = "unavailable"
     except TRANSCRIPT_EXCEPTIONS as exc:
         logger.warning("No usable transcript for %s: %s", video_id, exc)
+        subtitle_error = "unavailable"
+    except asyncio.TimeoutError:
+        logger.warning("Transcript fetch timeout for %s", video_id)
+        subtitle_error = "timeout"
     except Exception as exc:
         logger.error(
             "Unexpected transcript error for %s (%s): %s",
@@ -93,6 +132,7 @@ async def get_video_data(youtube_url: str) -> dict:
             type(exc).__name__,
             exc,
         )
+        subtitle_error = "error"
 
     if subtitle_available and len(subtitle_text) > TRANSCRIPT_CHAR_LIMIT:
         subtitle_text = _truncate_text(subtitle_text, TRANSCRIPT_CHAR_LIMIT)
@@ -104,6 +144,7 @@ async def get_video_data(youtube_url: str) -> dict:
         "thumbnail_url": thumbnail_url,
         "subtitle_text": subtitle_text,
         "subtitle_available": subtitle_available,
+        "subtitle_error": subtitle_error if not subtitle_available else None,
     }
 
 
