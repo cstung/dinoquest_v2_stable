@@ -10,7 +10,6 @@ import {
   Settings2,
   Sparkles,
   Trash2,
-  Youtube,
 } from 'lucide-react';
 import Modal from './Modal';
 import { api } from '../api/client';
@@ -294,10 +293,9 @@ export default function GPTTestMakerModal({ isOpen, onClose, onSaved }) {
                     YouTube Video URL
                   </label>
                   <div className="relative">
-                    <Youtube className="absolute left-3 top-1/2 -translate-y-1/2 text-[#0A0A0A]/40" size={18} />
                     <input
                       type="text"
-                      className="field-input pl-10"
+                      className="field-input"
                       placeholder="https://www.youtube.com/watch?v=..."
                       value={youtubeUrl}
                       onChange={(e) => setYoutubeUrl(e.target.value)}

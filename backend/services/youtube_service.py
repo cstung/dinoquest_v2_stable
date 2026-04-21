@@ -2,6 +2,8 @@ import html
 import asyncio
 import logging
 import re
+import os
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -64,6 +66,16 @@ def _transcript_timeout_seconds() -> float:
     return float(getattr(config.settings, "YOUTUBE_TRANSCRIPT_TIMEOUT_SECONDS", 20.0))
 
 
+def _ytdlp_timeout_seconds() -> float:
+    import backend.config as config
+    return float(getattr(config.settings, "YOUTUBE_YTDLP_TIMEOUT_SECONDS", 25.0))
+
+
+def _enable_ytdlp_fallback() -> bool:
+    import backend.config as config
+    return bool(getattr(config.settings, "YOUTUBE_ENABLE_YTDLP_FALLBACK", True))
+
+
 def _transcript_max_concurrency() -> int:
     import backend.config as config
     value = int(getattr(config.settings, "YOUTUBE_TRANSCRIPT_MAX_CONCURRENCY", 4))
@@ -82,7 +94,13 @@ async def get_video_data(youtube_url: str) -> dict:
     thumbnail_url = f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
 
     try:
-        async with httpx.AsyncClient(timeout=_oembed_timeout(), follow_redirects=True) as client:
+        # Bind to IPv4 to avoid environments with broken IPv6 routing stalling connects.
+        transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0")
+        async with httpx.AsyncClient(
+            timeout=_oembed_timeout(),
+            follow_redirects=True,
+            transport=transport,
+        ) as client:
             oembed_url = (
                 "https://www.youtube.com/oembed"
                 f"?url=https://www.youtube.com/watch?v={video_id}&format=json"
@@ -109,10 +127,7 @@ async def get_video_data(youtube_url: str) -> dict:
         # youtube-transcript-api is synchronous and can block indefinitely on network issues.
         # Offload to a thread and enforce an overall timeout so the request doesn't hang.
         async with _transcript_semaphore:
-            transcript_data = await asyncio.wait_for(
-                asyncio.to_thread(_fetch_transcript, video_id),
-                timeout=_transcript_timeout_seconds(),
-            )
+            transcript_data = await _fetch_transcript_threaded(video_id)
         subtitle_text = _transcript_to_text(transcript_data)
         subtitle_available = bool(subtitle_text)
         if subtitle_available:
@@ -134,6 +149,27 @@ async def get_video_data(youtube_url: str) -> dict:
         )
         subtitle_error = "error"
 
+    # Fallback: use yt-dlp to fetch auto-captions when transcript API hangs or fails.
+    # This helps in some hosted environments where youtube-transcript-api is flaky.
+    if _enable_ytdlp_fallback() and not subtitle_available and subtitle_error in {"timeout", "error", "unavailable"}:
+        logger.info("Trying yt-dlp subtitle fallback for video_id=%s", video_id)
+        try:
+            ytdlp_result = await _fetch_transcript_via_ytdlp(video_id)
+            if ytdlp_result.get("transcript_text"):
+                subtitle_text = ytdlp_result["transcript_text"]
+                subtitle_available = True
+                subtitle_error = None
+                # Fill metadata if oembed failed and yt-dlp has better data.
+                video_title = ytdlp_result.get("video_title") or video_title
+                thumbnail_url = ytdlp_result.get("thumbnail_url") or thumbnail_url
+                logger.info("yt-dlp transcript fallback succeeded for %s (%d chars)", video_id, len(subtitle_text))
+        except asyncio.TimeoutError:
+            logger.warning("yt-dlp subtitle fallback timeout for %s", video_id)
+            subtitle_error = "timeout"
+        except Exception as exc:
+            logger.warning("yt-dlp subtitle fallback failed for %s (%s): %s", video_id, type(exc).__name__, exc)
+            subtitle_error = subtitle_error or "error"
+
     if subtitle_available and len(subtitle_text) > TRANSCRIPT_CHAR_LIMIT:
         subtitle_text = _truncate_text(subtitle_text, TRANSCRIPT_CHAR_LIMIT)
         logger.info("Transcript truncated to %d chars", TRANSCRIPT_CHAR_LIMIT)
@@ -146,6 +182,93 @@ async def get_video_data(youtube_url: str) -> dict:
         "subtitle_available": subtitle_available,
         "subtitle_error": subtitle_error if not subtitle_available else None,
     }
+
+
+async def _fetch_transcript_threaded(video_id: str) -> Any:
+    """Fetch transcript in a thread with a bounded timeout."""
+    return await asyncio.wait_for(
+        asyncio.to_thread(_fetch_transcript, video_id),
+        timeout=_transcript_timeout_seconds(),
+    )
+
+
+async def _fetch_transcript_via_ytdlp(video_id: str) -> dict[str, str]:
+    """Fetch transcript via yt-dlp auto captions without downloading media."""
+    url = f"https://www.youtube.com/watch?v={video_id}"
+    return await asyncio.wait_for(
+        asyncio.to_thread(_fetch_transcript_via_ytdlp_sync, url, video_id),
+        timeout=_ytdlp_timeout_seconds(),
+    )
+
+
+def _fetch_transcript_via_ytdlp_sync(url: str, video_id: str) -> dict[str, str]:
+    import backend.config as config
+
+    try:
+        import yt_dlp
+    except Exception as exc:
+        raise RuntimeError("yt-dlp is not installed") from exc
+
+    preferred = list(PREFERRED_LANGUAGES)
+    # yt-dlp expects short codes; keep both forms since we don't fully control what it emits.
+    subtitle_langs = list(dict.fromkeys(preferred + ["en", "vi"]))
+
+    cache_dir = getattr(config.settings, "YT_DLP_CACHE_DIR", "") or None
+
+    with tempfile.TemporaryDirectory(prefix="dinoquest-ytdlp-") as tmpdir:
+        outtmpl = os.path.join(tmpdir, "%(id)s.%(ext)s")
+        ydl_opts: dict[str, Any] = {
+            "skip_download": True,
+            "writesubtitles": True,
+            "writeautomaticsub": True,
+            "subtitleslangs": subtitle_langs,
+            "subtitlesformat": "vtt",
+            "outtmpl": outtmpl,
+            # Prefer IPv4 in hosted environments where IPv6 is misconfigured.
+            "source_address": "0.0.0.0",
+            "quiet": True,
+            "no_warnings": True,
+            "noprogress": True,
+        }
+        if cache_dir:
+            ydl_opts["cachedir"] = cache_dir
+
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+
+        # Try to select the "best" VTT based on preferred languages.
+        candidates = [
+            os.path.join(tmpdir, name)
+            for name in os.listdir(tmpdir)
+            if name.startswith(video_id) and name.endswith(".vtt")
+        ]
+        if not candidates:
+            raise TranscriptUnavailableError("yt-dlp did not produce subtitles for this video")
+
+        def score(path: str) -> int:
+            name = os.path.basename(path)
+            # Common patterns: <id>.<lang>.vtt or <id>.<lang>-<region>.vtt
+            parts = name.split(".")
+            lang = parts[-2] if len(parts) >= 3 else ""
+            try:
+                return PREFERRED_LANGUAGES.index(lang)
+            except ValueError:
+                return 999
+
+        selected = sorted(candidates, key=score)[0]
+        transcript_text = _parse_vtt(selected)
+
+        title = ""
+        thumb = ""
+        if isinstance(info, dict):
+            title = str(info.get("title") or "")
+            thumb = str(info.get("thumbnail") or "")
+
+        return {
+            "transcript_text": transcript_text,
+            "video_title": title,
+            "thumbnail_url": thumb,
+        }
 
 
 def _fetch_transcript(video_id: str) -> Any:
