@@ -52,6 +52,7 @@ async def init_db():
         )
         from backend.examination_models import (  # noqa: F401
             TestItem, TestQuestion, TestAnswerOption, TestAttempt, QuestionLog,
+            YouTubeGenerationLog,
         )
         await conn.run_sync(Base.metadata.create_all)
 

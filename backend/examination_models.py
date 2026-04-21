@@ -134,3 +134,17 @@ class QuestionLog(Base):
 
     attempt = relationship("TestAttempt", back_populates="logs")
     question = relationship("TestQuestion")
+
+
+class YouTubeGenerationLog(Base):
+    """Audit log for YouTube-to-Quiz generations."""
+    __tablename__ = "youtube_generation_log"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    video_id: Mapped[str] = mapped_column(String, nullable=False)
+    video_title: Mapped[str | None] = mapped_column(String, nullable=True)
+    youtube_url: Mapped[str] = mapped_column(String, nullable=False)
+    n_questions: Mapped[int] = mapped_column(Integer, nullable=False)
+    generated_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")

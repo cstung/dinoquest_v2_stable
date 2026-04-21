@@ -4,12 +4,13 @@ import {
   BookOpen, Plus, Trash2, Edit3, Eye, Upload,
   ChevronDown, ChevronUp, Save, X, Loader2,
   AlertCircle, BarChart2, Check, Clock, Settings2,
-  Users, FileText, ArrowLeft, Unlock
+  Users, FileText, ArrowLeft, Unlock, Sparkles
 } from 'lucide-react';
 import PerformanceView from '../components/PerformanceView';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell
 } from 'recharts';
+import GPTTestMakerModal from '../components/GPTTestMakerModal';
 
 const PENALTY_MODES = [
   { value: 'none', label: 'No penalty (wrong = 0 pts)' },
@@ -54,6 +55,9 @@ export default function AdminExaminations() {
   // Retry requests
   const [retryRequests, setRetryRequests] = useState([]);
   const [showRetryRequests, setShowRetryRequests] = useState(false);
+
+  // GPT Test Maker
+  const [showGPTModal, setShowGPTModal] = useState(false);
 
   function defaultForm() {
     return {
@@ -138,30 +142,20 @@ export default function AdminExaminations() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate 1:1 specifically here on frontend as requested
-    const img = new Image();
-    img.onload = async () => {
-      if (img.width !== img.height) {
-        alert("Thumbnail must be square (1:1)");
-        return;
-      }
-      // If valid square, upload it
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        const res = await api('/api/uploads', {
-          method: 'POST',
-          body: formData,
-        });
-        setForm((prev) => ({
-          ...prev,
-          thumbnail_url: res.path,
-        }));
-      } catch (err) {
-        alert(err.message);
-      }
-    };
-    img.src = URL.createObjectURL(file);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await api('/api/uploads', {
+        method: 'POST',
+        body: formData,
+      });
+      setForm((prev) => ({
+        ...prev,
+        thumbnail_url: res.path,
+      }));
+    } catch (err) {
+      alert(err.message);
+    }
   };
 
   const loadRetryRequests = useCallback(async () => {
@@ -314,16 +308,13 @@ export default function AdminExaminations() {
           >
             <AlertCircle size={14} /> Retry Requests
           </button>
-          <button
-            className="game-btn game-btn-purple flex items-center gap-1"
-            onClick={() => {
-              setEditingTest(null);
-              setForm(defaultForm());
-              setShowForm(true);
-            }}
-            id="btn-create-test"
-          >
             <Plus size={14} /> New Test
+          </button>
+          <button
+            className="game-btn game-btn-blue flex items-center gap-1 shadow-[4px_4px_0_#0A0A0A] hover:translate-x-[-2px] hover:translate-y-[-2px] hover:shadow-[6px_6px_0_#0A0A0A]"
+            onClick={() => setShowGPTModal(true)}
+          >
+            <Sparkles size={14} /> Generate from YouTube
           </button>
         </div>
       </div>
@@ -624,14 +615,16 @@ export default function AdminExaminations() {
                 />
               </Field>
             )}
-            <Field label="Thumbnail Image (Square 1:1)">
-              <div className="flex items-center gap-4">
+            <Field label="Thumbnail Image (Wide/Hero ratio)">
+              <div className="flex flex-col gap-2">
                 {form.thumbnail_url && (
-                  <img
-                    src={form.thumbnail_url}
-                    alt="thumbnail preview"
-                    className="w-16 h-16 object-cover border-2 border-[#0A0A0A]"
-                  />
+                  <div className="game-panel overflow-hidden">
+                    <img
+                      src={form.thumbnail_url}
+                      alt="thumbnail preview"
+                      className="w-full h-32 object-cover"
+                    />
+                  </div>
                 )}
                 <input
                   type="file"
@@ -1186,6 +1179,17 @@ export default function AdminExaminations() {
             </div>
           )}
         </Modal>
+      {showGPTModal && (
+        <GPTTestMakerModal 
+          isOpen={showGPTModal}
+          onClose={() => setShowGPTModal(false)}
+          onSaved={(newTestId) => {
+            setShowGPTModal(false);
+            loadTests();
+            loadDetail(newTestId);
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+          }}
+        />
       )}
     </div>
   );

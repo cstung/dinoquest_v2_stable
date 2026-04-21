@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     VAPID_PUBLIC_KEY: str = ""
     VAPID_CLAIM_EMAIL: str = "mailto:admin@example.com"
 
+    # AI YouTube Question Generator
+    OPENAI_API_KEY: str = "sk-placeholder"
+    OPENAI_MODEL: str = "gpt-4o"
+    YT_DLP_CACHE_DIR: str = "/tmp/yt-dlp-cache"
+    YOUTUBE_GENERATE_DAILY_LIMIT: int = 10
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

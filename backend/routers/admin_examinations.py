@@ -12,14 +12,19 @@ from backend.models import User
 from backend.dependencies import require_admin
 from backend.examination_models import (
     TestItem, TestQuestion, TestAnswerOption, TestAttempt, QuestionLog,
+    YouTubeGenerationLog,
 )
 from backend.examination_schemas import (
     TestCreate, TestUpdate, TestResponse, TestDetailResponse,
     QuestionCreate, QuestionUpdate, QuestionResponse,
     AnswerOptionCreate, AnswerOptionResponse,
     TestImportRequest, AdminAttemptResponse,
+    YouTubeGenerateRequest, YouTubeGenerateResponse, SaveGeneratedRequest,
 )
 from backend.routers.examinations import _get_user_performance, _cleanup_expired_attempts
+from backend.services.youtube_service import get_video_data
+from backend.services.gpt_question_generator import generate_questions
+import backend.config as config
 
 router = APIRouter(prefix="/api/admin/examinations", tags=["admin-examinations"])
 
@@ -413,6 +418,146 @@ async def import_questions(
 
     await db.commit()
     return {"imported": count}
+
+
+# ── AI YouTube Generation ───────────────────────────────────────────────
+
+
+@router.post("/generate-from-youtube", response_model=YouTubeGenerateResponse)
+async def generate_from_youtube_endpoint(
+    body: YouTubeGenerateRequest,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """
+    Step 1: Extract subtitles and generate questions with GPT-4o.
+    This does NOT save the test yet.
+    """
+    # 1. Check daily rate limit
+    today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    stmt = (
+        select(func.count(YouTubeGenerationLog.id))
+        .where(
+            YouTubeGenerationLog.generated_by_user_id == admin.id,
+            YouTubeGenerationLog.created_at >= today_start
+        )
+    )
+    result = await db.execute(stmt)
+    today_count = result.scalar() or 0
+    
+    limit = config.settings.YOUTUBE_GENERATE_DAILY_LIMIT
+    if today_count >= limit:
+        raise HTTPException(
+            status_code=429, 
+            detail=f"Daily limit of {limit} generations reached. Please try again tomorrow."
+        )
+
+    # 2. Fetch video data
+    try:
+        video_data = await get_video_data(body.youtube_url)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"YouTube extraction failed: {str(e)}")
+
+    if not video_data["subtitle_available"]:
+        raise HTTPException(
+            status_code=422,
+            detail="This video has no subtitles. Please try a different video."
+        )
+
+    # 3. Generate questions
+    try:
+        questions = await generate_questions(
+            subtitle_text=video_data["subtitle_text"],
+            video_title=video_data["video_title"],
+            thumbnail_url=video_data["thumbnail_url"],
+            n_questions=body.n_questions,
+            difficulty=body.difficulty
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"AI generation failed: {str(e)}")
+
+    if not questions:
+        raise HTTPException(status_code=502, detail="AI failed to generate any valid questions.")
+
+    # 4. Log to audit table
+    log = YouTubeGenerationLog(
+        video_id=video_data["video_id"],
+        video_title=video_data["video_title"],
+        youtube_url=body.youtube_url,
+        n_questions=len(questions),
+        generated_by_user_id=admin.id
+    )
+    db.add(log)
+    await db.commit()
+
+    # 5. Build exam_draft
+    exam_draft = body.exam_config.copy()
+    if not exam_draft.get("title"):
+        exam_draft["title"] = video_data["video_title"]
+    
+    # Ensure some defaults if missing
+    exam_draft.setdefault("passing_score", 5000)
+    exam_draft.setdefault("duration_minutes", 15)
+
+    return YouTubeGenerateResponse(
+        video_title=video_data["video_title"],
+        video_id=video_data["video_id"],
+        thumbnail_url=video_data["thumbnail_url"],
+        subtitle_available=True,
+        questions=questions,
+        exam_draft=exam_draft
+    )
+
+
+@router.post("/save-generated", status_code=201)
+async def save_generated_test(
+    body: SaveGeneratedRequest,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """
+    Step 2: Save the reviewed questions as a real test.
+    """
+    # 1. Create the test header
+    config_data = body.exam_config
+    test = TestItem(
+        title=config_data.get("title", "Generated Test"),
+        description=f"Generated from YouTube video.",
+        duration_minutes=config_data.get("duration_minutes", 15),
+        passing_score=config_data.get("passing_score", 5000),
+        thumbnail_url=config_data.get("thumbnail_url"),
+        created_by=admin.id,
+        is_published=True
+    )
+    db.add(test)
+    await db.flush()
+
+    # 2. Add questions (reuse logic similar to bulk import)
+    for idx, item in enumerate(body.questions):
+        q = TestQuestion(
+            test_id=test.id,
+            question_text=item["question_text"],
+            media_type="image",
+            media_url=item.get("media_url"),
+            weight=item.get("weight", 1),
+            sort_order=idx,
+            allow_multiple=item.get("allow_multiple", False),
+        )
+        db.add(q)
+        await db.flush()
+
+        for oi, opt in enumerate(item.get("options", [])):
+            db.add(TestAnswerOption(
+                question_id=q.id,
+                option_text=opt["option_text"],
+                is_correct=opt["is_correct"],
+                sort_order=oi,
+            ))
+
+    await db.commit()
+    return {"exam_id": test.id}
 
 
 # ── Per-Test Analytics ───────────────────────────────────────────────────

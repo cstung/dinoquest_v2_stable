@@ -227,3 +227,25 @@ class GlobalAnalyticsResponse(BaseModel):
     avg_score: int
     avg_time: int
     completion_rate: float
+
+# -- AI Generation --------------------------------------------------------
+
+class YouTubeGenerateRequest(BaseModel):
+    youtube_url: str
+    n_questions: int = Field(ge=1, le=30, default=10)
+    difficulty: str = Field(default="medium", pattern="^(easy|medium|hard)$")
+    exam_config: dict = {}  # title, passing_score, duration, is_randomized, penalty_value
+
+
+class YouTubeGenerateResponse(BaseModel):
+    video_title: str
+    video_id: str
+    thumbnail_url: str
+    subtitle_available: bool
+    questions: list[dict]
+    exam_draft: dict
+
+
+class SaveGeneratedRequest(BaseModel):
+    exam_config: dict
+    questions: list[dict]
