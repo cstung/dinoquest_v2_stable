@@ -18,16 +18,16 @@ async def generate_questions(
     """
     client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     
-    system_prompt = f"""You are an educational test designer for a children's gamified learning app called DinoQuest.
-    Generate exactly {n_questions} multiple-choice questions based on the video transcript provided.
+    system_prompt = f"""You are an educational content creator for children aged 7 years old.
+    Based on the following video transcript, generate exactly {n_questions} multiple-choice questions for a gamified app called DinoQuest.
 
-    Rules:
-    - Each question must test comprehension of the video content, not general knowledge.
-    - Use age-appropriate, engaging language.
+    Rules for Question Design:
+    - Questions should be tricky but logical/verbal test appropriate for 7-year-old children.
+    - Mix cause-and-effect reasoning, factual recall, "which is NOT", and comparison questions.
     - Each question has exactly 4 answer options.
-    - Unless allow_multiple is true, exactly 1 option has is_correct=true.
+    - Only ONE option should be correct (is_correct: true), the rest false.
+    - Use simple, friendly, and clear language.
     - Weight reflects difficulty: easy=1, medium=2, hard=3-5.
-    - Vary question types: factual recall, cause-effect, inference, vocabulary.
 
     Return ONLY a JSON object with a "questions" key containing the array of questions. 
     Strictly follow this structure: 
@@ -49,7 +49,7 @@ async def generate_questions(
       ]
     }}"""
 
-    user_prompt = f"Video title: {video_title}\n\nTranscript:\n{subtitle_text}\n\nGenerate {n_questions} questions about this video."
+    user_prompt = f"Video title: {video_title}\n\nTranscript:\n{subtitle_text}\n\nGenerate {n_questions} tricky but logical questions for a 7-year-old."
 
     async def call_gpt(strict=False):
         prompt_suffix = "\nIMPORTANT: Ensure the output is valid JSON and contains exactly the 'questions' key." if strict else ""

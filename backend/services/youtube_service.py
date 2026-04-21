@@ -1,149 +1,83 @@
 import re
-import os
-import tempfile
 import logging
-import asyncio
-from pathlib import Path
-import yt_dlp
+import httpx
+from youtube_transcript_api import YouTubeTranscriptApi
+from youtube_transcript_api._errors import NoTranscriptFound, TranscriptsDisabled
 
 logger = logging.getLogger(__name__)
 
 async def get_video_data(youtube_url: str) -> dict:
     """
-    Extracts metadata and subtitles from a YouTube video URL.
-    Returns:
-    {
-        "video_id": str,
-        "video_title": str,
-        "thumbnail_url": str,
-        "subtitle_text": str,
-        "subtitle_available": bool
-    }
+    Extracts metadata via OEmbed and subtitles via youtube-transcript-api.
+    NO external binaries (yt-dlp/ffmpeg) required.
     """
     # 1. Extract video_id from URL
-    regex = r"(?:https?://)?(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)([\w-]+)"
-    match = re.search(regex, youtube_url)
-    if not match:
-        raise ValueError("Invalid YouTube URL format")
+    video_id = _extract_video_id(youtube_url)
     
-    video_id = match.group(1)
-    
-    # 2. Thumbnail URL (Construct directly)
+    # 2. Fetch Metadata via OEmbed (Fast & Reliable)
+    # This avoids using yt-dlp which was hanging on the server
+    video_title = "Unknown Video"
     thumbnail_url = f"https://img.youtube.com/vi/{video_id}/maxresdefault.jpg"
     
-    # Create a temp directory for subtitles
-    with tempfile.TemporaryDirectory() as tmpdir:
-        # 3. Subtitle download via yt-dlp
-        ydl_opts = {
-            "skip_download": True,
-            "writeautomaticsub": True,
-            "writesubtitles": True,
-            "subtitleslangs": ["en", "vi"],
-            "subtitlesformat": "vtt",
-            "outtmpl": os.path.join(tmpdir, "%(id)s.%(ext)s"),
-            "quiet": True,
-            "no_warnings": True,
-            "nocheckcertificate": True, # Speed up SSL
-            "socket_timeout": 15,       # Don't wait forever
-            "retries": 1,
-            "geo_bypass": True,
-            "format": "bestaudio/best", # We only need audio for metadata/subs
-            "no_color": True,
-        }
-        
-        try:
-            # yt-dlp is mostly synchronous in its extract_info call
-            # We run it in a thread to keep the event loop free
-            loop = asyncio.get_event_loop()
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                logger.info("Extracting YouTube info for: %s", youtube_url)
-                # Defensive timeout of 40s total for info extraction
-                info = await asyncio.wait_for(
-                    loop.run_in_executor(None, lambda: ydl.extract_info(youtube_url, download=True)),
-                    timeout=40.0
-                )
-                video_title = info.get("title", "Unknown Video")
-                logger.info("YouTube metadata fetched: %s", video_title)
-            
-            # Find the subtitle file
-            vtt_file = None
-            for f in os.listdir(tmpdir):
-                if f.endswith(".vtt"):
-                    vtt_file = os.path.join(tmpdir, f)
-                    break
-            
-            if not vtt_file:
-                return {
-                    "video_id": video_id,
-                    "video_title": video_title,
-                    "thumbnail_url": thumbnail_url,
-                    "subtitle_text": "",
-                    "subtitle_available": False
-                }
-            
-            # 4. Parse .vtt to plain text
-            subtitle_text = _parse_vtt(vtt_file)
-            logger.info("Raw subtitles extracted: %d chars", len(subtitle_text))
-            
-            # 5. Truncate to 12,000 characters
-            if len(subtitle_text) > 12000:
-                subtitle_text = subtitle_text[:12000] + "\n[transcript truncated at 12,000 characters]"
-                logger.info("Subtitles truncated to 12,000 chars for AI efficiency")
-            
-            return {
-                "video_id": video_id,
-                "video_title": video_title,
-                "thumbnail_url": thumbnail_url,
-                "subtitle_text": subtitle_text,
-                "subtitle_available": True
-            }
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
+            resp = await client.get(oembed_url)
+            if resp.status_code == 200:
+                data = resp.json()
+                video_title = data.get("title", video_title)
+                thumbnail_url = data.get("thumbnail_url", thumbnail_url)
+    except Exception as e:
+        logger.warning("OEmbed metadata fetch failed: %s. Using defaults.", str(e))
 
-        except Exception as e:
-            logger.error("yt-dlp failed: %s", str(e))
-            if "not available" in str(e).lower() or "private" in str(e).lower():
-                raise ValueError(f"Video unavailable: {str(e)}")
-            raise RuntimeError(f"yt-dlp failed unexpectedly: {str(e)}")
-
-def _parse_vtt(filepath: str) -> str:
-    """Helper to strip VTT markup and timestamps."""
-    content = []
-    with open(filepath, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
-        
-    for line in lines:
-        line = line.strip()
-        # Skip header lines
-        if line.startswith(("WEBVTT", "Kind:", "Language:", "00:")):
-            continue
-        # Skip timestamp lines (alternative format)
-        if "-->" in line:
-            continue
-        # Skip numeric cue identifiers
-        if line.isdigit():
-            continue
-        if not line:
-            continue
-            
-        # Basic cleaning of multiple spaces/duplicates (common in auto-subs)
-        # Duplicate removal logic for auto-generated subs
-        if content and content[-1] == line:
-            continue
-            
-        content.append(line)
+    # 3. Fetch Transcript
+    subtitle_text = ""
+    subtitle_available = False
     
-    # Join and collapse multiple spaces
-    text = " ".join(content)
-    return re.sub(r'\s+', ' ', text).strip()
-
-if __name__ == "__main__":
-    # Internal verification test
-    async def test():
+    logger.info("Fetching transcript for video_id: %s", video_id)
+    try:
+        # Try specific languages first
         try:
-            res = await get_video_data("https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-            print("Video Title:", res["video_title"])
-            print("Subtitle Available:", res["subtitle_available"])
-            print("Snippet:", res["subtitle_text"][:100] + "...")
-        except Exception as e:
-            print("TEST FAILED:", e)
+            transcript_list = YouTubeTranscriptApi.get_transcript(
+                video_id, languages=["en", "vi", "en-US", "en-GB"]
+            )
+            subtitle_text = " ".join(t["text"] for t in transcript_list)
+            subtitle_available = True
+        except NoTranscriptFound:
+            # Fallback: find ANY available transcript (including auto-generated)
+            ts = YouTubeTranscriptApi.list_transcripts(video_id)
+            transcript = ts.find_generated_transcript(["en", "vi", "en-US", "en-GB", "id", "ms"])
+            transcript_list = transcript.fetch()
+            subtitle_text = " ".join(t["text"] for t in transcript_list)
+            subtitle_available = True
+            
+    except (NoTranscriptFound, TranscriptsDisabled) as e:
+        logger.warning("No subtitles found or disabled for %s: %s", video_id, str(e))
+    except Exception as e:
+        logger.error("Unexpected transcript error for %s: %s", video_id, str(e))
 
-    asyncio.run(test())
+    # 4. Truncate and Clean
+    if subtitle_available:
+        logger.info("Raw transcript fetched: %d chars", len(subtitle_text))
+        if len(subtitle_text) > 12000:
+            subtitle_text = subtitle_text[:12000] + "\n[transcript truncated at 12,000 characters]"
+            logger.info("Transcript truncated to 12,000 chars for AI efficiency")
+    
+    return {
+        "video_id": video_id,
+        "video_title": video_title,
+        "thumbnail_url": thumbnail_url,
+        "subtitle_text": subtitle_text,
+        "subtitle_available": subtitle_available
+    }
+
+def _extract_video_id(url: str) -> str:
+    """Helper to extract the 11-char YouTube ID."""
+    patterns = [
+        r"(?:v=|youtu\.be/|embed/|shorts/)([a-zA-Z0-9_-]{11})",
+    ]
+    for pattern in patterns:
+        m = re.search(pattern, url)
+        if m:
+            return m.group(1)
+    raise ValueError("Invalid YouTube URL format")
