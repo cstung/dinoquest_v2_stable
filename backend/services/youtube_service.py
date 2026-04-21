@@ -36,20 +36,32 @@ async def get_video_data(youtube_url: str) -> dict:
     
     logger.info("Fetching transcript for video_id: %s", video_id)
     try:
-        # Try specific languages first
+        # 3.1 Fetch the list of all available transcripts
+        transcript_list_obj = YouTubeTranscriptApi.list_transcripts(video_id)
+        
+        # 3.2 Try to find preferred languages (both manual and generated)
         try:
-            transcript_list = YouTubeTranscriptApi.get_transcript(
-                video_id, languages=["en", "vi", "en-US", "en-GB"]
-            )
-            subtitle_text = " ".join(t["text"] for t in transcript_list)
-            subtitle_available = True
+            transcript = transcript_list_obj.find_transcript(["en", "vi", "en-US", "en-GB"])
+            logger.info("Found preferred transcript: %s", transcript.language_code)
         except NoTranscriptFound:
-            # Fallback: find ANY available transcript (including auto-generated)
-            ts = YouTubeTranscriptApi.list_transcripts(video_id)
-            transcript = ts.find_generated_transcript(["en", "vi", "en-US", "en-GB", "id", "ms"])
-            transcript_list = transcript.fetch()
-            subtitle_text = " ".join(t["text"] for t in transcript_list)
-            subtitle_available = True
+            # 3.3 Fallback: Get all available languages for logging
+            available_langs = [t.language_code for t in transcript_list_obj]
+            logger.info("Preferred langs not found. Available: %s", available_langs)
+            
+            # 3.4 Attempt to pick the first manual transcript (any language)
+            manual_transcripts = [t for t in transcript_list_obj if not t.is_generated]
+            if manual_transcripts:
+                transcript = manual_transcripts[0]
+                logger.info("Falling back to first manual transcript: %s", transcript.language_code)
+            else:
+                # 3.5 Final Fallback: take the absolute first available (likely auto-generated)
+                transcript = next(iter(transcript_list_obj))
+                logger.info("Falling back to absolute first available transcript: %s", transcript.language_code)
+        
+        # 3.6 Fetch the actual text
+        transcript_data = transcript.fetch()
+        subtitle_text = " ".join(t["text"] for t in transcript_data)
+        subtitle_available = True
             
     except (NoTranscriptFound, TranscriptsDisabled) as e:
         logger.warning("No subtitles found or disabled for %s: %s", video_id, str(e))
