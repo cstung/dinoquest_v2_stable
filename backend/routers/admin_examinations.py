@@ -70,6 +70,7 @@ async def create_test(
         penalty_mode=body.penalty_mode,
         penalty_value=body.penalty_value,
         thumbnail_url=body.thumbnail_url,
+        is_published=body.is_published,
         created_by=admin.id,
     )
     db.add(test)

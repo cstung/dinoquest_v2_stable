@@ -74,6 +74,7 @@ async def init_db():
             ("exam_attempts", "retry_requested", "BOOLEAN DEFAULT 0"),
             ("exam_attempts", "retry_approved", "BOOLEAN DEFAULT 0"),
             ("exam_tests", "thumbnail_url", "VARCHAR(500)"),
+            ("exam_tests", "is_published", "BOOLEAN DEFAULT 1"),
         ]
         for table, col, typedef in _migrations:
             try:

@@ -96,6 +96,7 @@ class TestCreate(BaseModel):
     penalty_mode: PenaltyMode = PenaltyMode.none
     penalty_value: int = Field(default=0, ge=0)
     thumbnail_url: str | None = None
+    is_published: bool = True
 
 
 class TestUpdate(BaseModel):
@@ -107,6 +108,7 @@ class TestUpdate(BaseModel):
     penalty_mode: PenaltyMode | None = None
     penalty_value: int | None = None
     is_active: bool | None = None
+    is_published: bool | None = None
     thumbnail_url: str | None = None
 
 
@@ -120,6 +122,7 @@ class TestResponse(BaseModel):
     penalty_mode: PenaltyMode
     penalty_value: int
     is_active: bool
+    is_published: bool
     created_by: int
     created_at: datetime
     question_count: int = 0
@@ -140,6 +143,7 @@ class TestPublicResponse(BaseModel):
     duration_minutes: int
     question_count: int = 0
     is_active: bool
+    is_published: bool
     thumbnail_url: str | None = None
 
     model_config = {"from_attributes": True}

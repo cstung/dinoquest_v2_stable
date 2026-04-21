@@ -65,6 +65,7 @@ export default function AdminExaminations() {
       penalty_mode: 'none',
       penalty_value: 0,
       thumbnail_url: '',
+      is_published: true,
     };
   }
 
@@ -360,6 +361,11 @@ export default function AdminExaminations() {
                     INACTIVE
                   </span>
                 )}
+                {!t.is_published && (
+                  <span className="text-[10px] font-mono bg-[#FFF7D1] px-1.5 py-0.5 border border-[#0A0A0A]">
+                    DRAFT
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-3 mt-1">
                 <span className="text-xs font-mono opacity-60">
@@ -390,6 +396,7 @@ export default function AdminExaminations() {
                     penalty_mode: t.penalty_mode,
                     penalty_value: t.penalty_value,
                     thumbnail_url: t.thumbnail_url || '',
+                    is_published: t.is_published,
                   });
                   setShowForm(true);
                 }}
@@ -633,6 +640,19 @@ export default function AdminExaminations() {
                   className="field-input p-1 max-w-[200px]"
                 />
               </div>
+            </Field>
+            <Field label="Published">
+              <label className="flex items-center gap-2 mt-1">
+                <input
+                  type="checkbox"
+                  checked={form.is_published}
+                  onChange={(e) =>
+                    setForm({ ...form, is_published: e.target.checked })
+                  }
+                  className="w-4 h-4"
+                />
+                <span className="text-sm">Make this test visible to users</span>
+              </label>
             </Field>
             <button
               className="game-btn game-btn-purple w-full flex items-center justify-center gap-2"
