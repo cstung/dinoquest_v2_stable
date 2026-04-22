@@ -77,11 +77,11 @@ function isQuestionValid(question) {
   return true;
 }
 
-function createManualQuestion(thumbnailUrl) {
+function createManualQuestion() {
   return {
     question_text: 'New Question',
-    media_type: thumbnailUrl ? 'image' : 'none',
-    media_url: thumbnailUrl || '',
+    media_type: 'none',
+    media_url: null,
     weight: 1,
     allow_multiple: false,
     options: [
@@ -107,6 +107,8 @@ export default function GPTTestMakerModal({ isOpen, onClose, onSaved }) {
 
   const [transcriptStatus, setTranscriptStatus] = useState(null); // null | fetching | ready | error | manual
   const [fetchedTranscript, setFetchedTranscript] = useState(null);
+  const [fetchedVideoTitle, setFetchedVideoTitle] = useState('');
+  const [fetchedThumbnailUrl, setFetchedThumbnailUrl] = useState('');
   const [manualTranscript, setManualTranscript] = useState('');
   const lastTranscriptUrlRef = useRef('');
 
@@ -127,6 +129,8 @@ export default function GPTTestMakerModal({ isOpen, onClose, onSaved }) {
       setExamConfig({ ...DEFAULT_EXAM_CONFIG });
       setTranscriptStatus(null);
       setFetchedTranscript(null);
+      setFetchedVideoTitle('');
+      setFetchedThumbnailUrl('');
       setManualTranscript('');
       lastTranscriptUrlRef.current = '';
       setGeneratedData(null);
@@ -175,13 +179,19 @@ export default function GPTTestMakerModal({ isOpen, onClose, onSaved }) {
     lastTranscriptUrlRef.current = url;
     setTranscriptStatus('fetching');
     setFetchedTranscript(null);
+    setFetchedVideoTitle('');
+    setFetchedThumbnailUrl('');
 
     try {
       const result = await fetchTranscriptClientSide(url);
       setFetchedTranscript(result.text);
+      setFetchedVideoTitle(result.title || '');
+      setFetchedThumbnailUrl(result.thumbnailUrl || '');
       setTranscriptStatus('ready');
     } catch {
       setFetchedTranscript(null);
+      setFetchedVideoTitle('');
+      setFetchedThumbnailUrl('');
       setTranscriptStatus('error');
     }
   };
@@ -225,6 +235,8 @@ export default function GPTTestMakerModal({ isOpen, onClose, onSaved }) {
           difficulty,
           exam_config: examConfig,
           transcript_text: transcriptText.trim() || undefined,
+          video_title: fetchedVideoTitle || undefined,
+          thumbnail_url: fetchedThumbnailUrl || undefined,
         },
       });
       setGeneratedData(res);
@@ -254,8 +266,8 @@ export default function GPTTestMakerModal({ isOpen, onClose, onSaved }) {
         body: {
           exam_config: {
             ...examConfig,
-            title: examConfig.title || generatedData.video_title,
-            thumbnail_url: generatedData.thumbnail_url,
+            title: (examConfig.title || generatedData?.video_title || '').trim(),
+            thumbnail_url: (examConfig.thumbnail_url || generatedData?.thumbnail_url || '').trim(),
           },
           questions: editableQuestions,
         },
@@ -310,7 +322,7 @@ export default function GPTTestMakerModal({ isOpen, onClose, onSaved }) {
   const addManualQuestion = () => {
     setEditableQuestions((current) => [
       ...current,
-      createManualQuestion(generatedData?.thumbnail_url),
+      createManualQuestion(),
     ]);
     setExpandedIdx(editableQuestions.length);
   };

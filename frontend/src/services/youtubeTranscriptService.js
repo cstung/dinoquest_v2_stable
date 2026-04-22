@@ -5,6 +5,28 @@ function extractVideoId(youtubeUrl) {
   return match[1];
 }
 
+async function fetchOEmbedMeta(videoId) {
+  const watchUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+  const oembedUrl = `https://www.youtube.com/oembed?url=${encodeURIComponent(watchUrl)}&format=json`;
+
+  const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout
+    ? AbortSignal.timeout(8000)
+    : undefined;
+
+  const res = await fetch(oembedUrl, {
+    method: 'GET',
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+
+  if (!res.ok) throw new Error('oEmbed request failed');
+  const data = await res.json();
+  return {
+    title: String(data?.title || '').trim(),
+    thumbnailUrl: String(data?.thumbnail_url || '').trim(),
+  };
+}
+
 async function fetchSupadataTranscript(youtubeUrl, lang) {
   const encodedUrl = encodeURIComponent(youtubeUrl);
   const base = 'https://api.supadata.ai/v1/youtube/transcript';
@@ -38,7 +60,19 @@ async function fetchSupadataTranscript(youtubeUrl, lang) {
 
 export async function fetchTranscriptClientSide(youtubeUrl) {
   const url = String(youtubeUrl || '').trim();
-  extractVideoId(url); // validates supported formats
+  const videoId = extractVideoId(url); // validates supported formats
+
+  const defaultThumb = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  let meta = { title: '', thumbnailUrl: defaultThumb };
+  try {
+    const oembed = await fetchOEmbedMeta(videoId);
+    meta = {
+      title: oembed.title || '',
+      thumbnailUrl: oembed.thumbnailUrl || defaultThumb,
+    };
+  } catch {
+    // keep derived thumbnail/title empty
+  }
 
   const attempts = [
     () => fetchSupadataTranscript(url, 'vi'),
@@ -50,7 +84,9 @@ export async function fetchTranscriptClientSide(youtubeUrl) {
   for (const attempt of attempts) {
     try {
       const result = await attempt();
-      if (result?.text && result.text.length > 100) return result;
+      if (result?.text && result.text.length > 100) {
+        return { ...result, videoId, title: meta.title, thumbnailUrl: meta.thumbnailUrl };
+      }
     } catch (e) {
       lastError = e;
     }
@@ -60,4 +96,3 @@ export async function fetchTranscriptClientSide(youtubeUrl) {
   err.cause = lastError;
   throw err;
 }
-

@@ -90,11 +90,11 @@ async def get_video_data(youtube_url: str) -> dict:
     Extracts YouTube metadata and transcript text without downloading media files.
     """
     video_id = _extract_video_id(youtube_url)
-    video_title = "Unknown Video"
+    video_title = "YouTube Video"
     thumbnail_url = f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
 
     try:
-        # Bind to IPv4 to avoid environments with broken IPv6 routing stalling connects.
+        # 2. Fetch Metadata via OEmbed (Fast & Reliable)
         transport = httpx.AsyncHTTPTransport(local_address="0.0.0.0")
         async with httpx.AsyncClient(
             timeout=_oembed_timeout(),
@@ -106,10 +106,10 @@ async def get_video_data(youtube_url: str) -> dict:
                 f"?url=https://www.youtube.com/watch?v={video_id}&format=json"
             )
             response = await client.get(oembed_url)
-            response.raise_for_status()
-            data = response.json()
-            video_title = data.get("title", video_title)
-            thumbnail_url = data.get("thumbnail_url", thumbnail_url)
+            if response.status_code == 200:
+                data = response.json()
+                video_title = data.get("title", video_title)
+                thumbnail_url = data.get("thumbnail_url", thumbnail_url)
     except Exception as exc:
         logger.warning(
             "OEmbed metadata fetch failed for %s (%s): %s. Using defaults.",

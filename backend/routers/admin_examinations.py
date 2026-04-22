@@ -33,6 +33,8 @@ router = APIRouter(prefix="/api/admin/examinations", tags=["admin-examinations"]
 
 class YouTubeGenerateRequestClient(YouTubeGenerateRequest):
     transcript_text: Optional[str] = None
+    video_title: Optional[str] = None
+    thumbnail_url: Optional[str] = None
 
 
 def _coerce_non_negative_int(value, default: int) -> int:
@@ -466,14 +468,16 @@ async def generate_from_youtube_endpoint(
             body.youtube_url or "",
         )
         video_id = match.group(1) if match else "unknown"
-        thumbnail_url = (
+        client_title = (body.video_title or "").strip()
+        client_thumbnail = (body.thumbnail_url or "").strip()
+        thumbnail_url = client_thumbnail or (
             f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
             if video_id != "unknown"
             else ""
         )
         video_data = {
             "video_id": video_id,
-            "video_title": body.exam_config.get("title") or "Unknown Video",
+            "video_title": client_title or body.exam_config.get("title") or "Unknown Video",
             "thumbnail_url": thumbnail_url,
             "subtitle_text": transcript_text,
             "subtitle_available": True,
@@ -531,18 +535,48 @@ async def generate_from_youtube_endpoint(
 
     # 3. Generate questions
     try:
-        questions = await generate_questions(
-            subtitle_text=video_data["subtitle_text"],
-            video_title=video_data["video_title"],
-            thumbnail_url=video_data["thumbnail_url"],
-            n_questions=body.n_questions,
-            difficulty=body.difficulty
-        )
+        # Reserve the first question for an embedded video player.
+        ai_count = max(int(body.n_questions) - 1, 0)
+        questions = []
+        if ai_count > 0:
+            questions = await generate_questions(
+                subtitle_text=video_data["subtitle_text"],
+                video_title=video_data["video_title"],
+                thumbnail_url=video_data["thumbnail_url"],
+                n_questions=ai_count,
+                difficulty=body.difficulty
+            )
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"AI generation failed: {str(e)}")
 
-    if not questions:
-        raise HTTPException(status_code=502, detail="AI failed to generate any valid questions.")
+    # Build first question: embedded YouTube player (kid watches video here).
+    video_id = video_data.get("video_id") or "unknown"
+    video_watch_url = (
+        f"https://www.youtube.com/watch?v={video_id}"
+        if video_id != "unknown"
+        else body.youtube_url
+    )
+    first_question = {
+        "question_text": "Watch the video below before answering the questions! 🎬",
+        "media_type": "youtube",
+        "media_url": video_watch_url,
+        "explanation": None,
+        "weight": 1,
+        "allow_multiple": False,
+        "options": [], # No options as requested
+    }
+
+    # Force remaining questions to be text-only (no attachments).
+    cleaned_questions = []
+    for idx, q in enumerate(questions or []):
+        if isinstance(q, dict):
+            # Strict cleaning: remove any media attached by AI
+            q["media_type"] = "none"
+            q["media_url"] = None
+            q["sort_order"] = idx + 1
+        cleaned_questions.append(q)
+
+    questions = [first_question] + cleaned_questions
 
     # 4. Log to audit table
     log = YouTubeGenerationLog(
@@ -559,6 +593,8 @@ async def generate_from_youtube_endpoint(
     exam_draft = body.exam_config.copy()
     if not exam_draft.get("title"):
         exam_draft["title"] = video_data["video_title"]
+    if not exam_draft.get("thumbnail_url") and video_data.get("thumbnail_url"):
+        exam_draft["thumbnail_url"] = video_data["thumbnail_url"]
     
     # Ensure some defaults if missing
     exam_draft.setdefault("passing_score", 5000)
@@ -590,9 +626,13 @@ async def save_generated_test(
     if not body.questions:
         raise HTTPException(status_code=422, detail="At least one question is required.")
 
-    thumbnail_url = config_data.get("thumbnail_url") or (
-        body.questions[0].get("media_url") if body.questions else None
-    )
+    title = (config_data.get("title") or "").strip()
+    if not title:
+        title = "YouTube Video Quiz"
+        
+    raw_thumb = (config_data.get("thumbnail_url") or "").strip()
+    thumbnail_url = raw_thumb or None
+    
     normalized_questions = normalize_questions(
         body.questions,
         thumbnail_url=thumbnail_url or "",
@@ -618,7 +658,7 @@ async def save_generated_test(
     penalty_mode = PenaltyMode.absolute if penalty_value > 0 else PenaltyMode.none
 
     test = TestItem(
-        title=config_data.get("title", "Generated Test"),
+        title=title,
         description=f"Generated from YouTube video.",
         duration_minutes=duration_minutes,
         passing_score=passing_score,

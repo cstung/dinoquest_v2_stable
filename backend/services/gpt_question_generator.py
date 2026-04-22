@@ -95,7 +95,7 @@ def normalize_questions(
 
         options: list[dict] = []
         seen_option_texts: set[str] = set()
-        for raw_option in raw_options:
+        for raw_option in raw_options or []:
             if not isinstance(raw_option, dict):
                 continue
             option_text = _clean_text(raw_option.get("option_text"))
@@ -116,12 +116,17 @@ def normalize_questions(
             if len(options) == 4:
                 break
 
-        if len(options) != 4:
+        # Normal questions must have 4 options. 
+        # Video/Intro questions (media_type=youtube) are allowed to have 0 options.
+        media_type_raw = _clean_text(raw_question.get("media_type")).lower()
+        is_video_intro = media_type_raw == "youtube"
+        
+        if not is_video_intro and len(options) != 4:
             continue
 
         allow_multiple = bool(raw_question.get("allow_multiple", False))
         correct_indexes = [i for i, option in enumerate(options) if option["is_correct"]]
-        if not correct_indexes:
+        if not is_video_intro and not correct_indexes:
             continue
         if not allow_multiple and len(correct_indexes) > 1:
             first_correct = correct_indexes[0]
@@ -129,8 +134,15 @@ def normalize_questions(
                 option["is_correct"] = index == first_correct
 
         weight = _coerce_weight(raw_question.get("weight"))
-        media_url = _clean_text(raw_question.get("media_url")) or thumbnail_url or None
-        media_type = "image" if media_url else "none"
+        media_url = _clean_text(raw_question.get("media_url")) or None
+        media_type = "none"
+        if media_url:
+            requested_type = _clean_text(raw_question.get("media_type")).lower()
+            if requested_type in {"image", "youtube"}:
+                media_type = requested_type
+            else:
+                # Back-compat: if a URL exists but type is missing/invalid, treat as image.
+                media_type = "image"
         explanation = _clean_text(raw_question.get("explanation")) or None
 
         normalized_questions.append(
@@ -177,11 +189,11 @@ Return only JSON in this shape:
   "questions": [
     {{
       "question_text": "string",
-      "media_type": "image",
-      "media_url": "{thumbnail_url}",
+      "media_type": "none",
+      "media_url": null,
       "weight": 1,
       "allow_multiple": false,
-      "explanation": "short optional explanation",
+      "explanation": "short optional explanation (optional)",
       "options": [
         {{"option_text": "string", "is_correct": true, "sort_order": 0}},
         {{"option_text": "string", "is_correct": false, "sort_order": 1}},
