@@ -355,7 +355,7 @@ export default function AdminExaminations() {
           >
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-sm truncate">{t.title}</h3>
+                <h3 className="font-bold text-sm line-clamp-2">{t.title}</h3>
                 {!t.is_active && (
                   <span className="text-[10px] font-mono bg-[#FF4D4D] text-white px-1.5 py-0.5 border border-[#0A0A0A]">
                     INACTIVE

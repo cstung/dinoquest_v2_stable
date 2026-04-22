@@ -535,7 +535,7 @@ export default function GPTTestMakerModal({ isOpen, onClose, onSaved }) {
                     className="w-[120px] h-[68px] object-cover border-2 border-[#0A0A0A]"
                   />
                   <div className="overflow-hidden">
-                    <h3 className="font-bold truncate text-[#0A0A0A]">{generatedData?.video_title}</h3>
+                    <h3 className="font-bold line-clamp-2 text-[#0A0A0A]">{generatedData?.video_title}</h3>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="px-2 py-0.5 bg-[#0066FF] text-[10px] uppercase font-bold text-white border border-[#0A0A0A]">
                         {editableQuestions.length} Questions
@@ -557,7 +557,7 @@ export default function GPTTestMakerModal({ isOpen, onClose, onSaved }) {
                           <span className="shrink-0 w-6 h-6 flex items-center justify-center bg-[#FFE500] text-[#0A0A0A] font-bold text-xs border-2 border-[#0A0A0A]">
                             {questionIndex + 1}
                           </span>
-                          <span className="truncate text-sm text-[#0A0A0A] font-bold">
+                          <span className="line-clamp-2 text-sm text-[#0A0A0A] font-bold">
                             {question.question_text}
                           </span>
                         </div>

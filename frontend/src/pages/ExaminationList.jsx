@@ -157,7 +157,7 @@ export default function ExaminationList() {
                 
                 <div className="p-4 flex flex-col flex-1 gap-2">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-bold text-base line-clamp-1">{test.title}</h3>
+                    <h3 className="font-bold text-base line-clamp-2">{test.title}</h3>
                     {best !== null && (
                       <div className="flex items-center gap-1 text-[#00A95C] flex-shrink-0" title="Best Score">
                         <Trophy size={14} />
@@ -258,7 +258,7 @@ export default function ExaminationList() {
                     className="game-panel p-4 flex items-center justify-between gap-3"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="font-bold text-sm truncate">{testTitle}</p>
+                      <p className="font-bold text-sm line-clamp-2">{testTitle}</p>
                       <p className="text-[10px] font-mono opacity-60 mt-0.5">
                         {new Date(a.finished_at).toLocaleDateString()} ·{' '}
                         {a.status === 'timed_out' ? 'TIMED OUT' : 'SUBMITTED'}
