@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
   ArrowLeft,
@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import Modal from './Modal';
 import { api } from '../api/client';
+import { fetchTranscriptClientSide } from '../services/youtubeTranscriptService';
 
 const LOADING_STAGES = [
   { delay: 0, message: 'Fetching video info...' },
@@ -104,6 +105,11 @@ export default function GPTTestMakerModal({ isOpen, onClose, onSaved }) {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [examConfig, setExamConfig] = useState(() => ({ ...DEFAULT_EXAM_CONFIG }));
 
+  const [transcriptStatus, setTranscriptStatus] = useState(null); // null | fetching | ready | error | manual
+  const [fetchedTranscript, setFetchedTranscript] = useState(null);
+  const [manualTranscript, setManualTranscript] = useState('');
+  const lastTranscriptUrlRef = useRef('');
+
   const [generatedData, setGeneratedData] = useState(null);
   const [editableQuestions, setEditableQuestions] = useState([]);
   const [expandedIdx, setExpandedIdx] = useState(0);
@@ -119,6 +125,10 @@ export default function GPTTestMakerModal({ isOpen, onClose, onSaved }) {
       setDifficulty('medium');
       setShowAdvanced(false);
       setExamConfig({ ...DEFAULT_EXAM_CONFIG });
+      setTranscriptStatus(null);
+      setFetchedTranscript(null);
+      setManualTranscript('');
+      lastTranscriptUrlRef.current = '';
       setGeneratedData(null);
       setEditableQuestions([]);
       setExpandedIdx(0);
@@ -148,11 +158,65 @@ export default function GPTTestMakerModal({ isOpen, onClose, onSaved }) {
     [editableQuestions],
   );
 
+  const transcriptWordCount = useMemo(() => {
+    const text = transcriptStatus === 'manual' ? manualTranscript : (fetchedTranscript || '');
+    const words = String(text || '').trim().split(/\s+/).filter(Boolean);
+    return words.length;
+  }, [fetchedTranscript, manualTranscript, transcriptStatus]);
+
+  const handleFetchTranscript = async (urlOverride) => {
+    const url = String(urlOverride || youtubeUrl).trim();
+    if (!YOUTUBE_URL_RE.test(url)) return;
+    if (transcriptStatus === 'manual') return;
+
+    // Avoid refetching the same URL if we already have a ready transcript.
+    if (lastTranscriptUrlRef.current === url && transcriptStatus === 'ready' && fetchedTranscript) return;
+
+    lastTranscriptUrlRef.current = url;
+    setTranscriptStatus('fetching');
+    setFetchedTranscript(null);
+
+    try {
+      const result = await fetchTranscriptClientSide(url);
+      setFetchedTranscript(result.text);
+      setTranscriptStatus('ready');
+    } catch {
+      setFetchedTranscript(null);
+      setTranscriptStatus('error');
+    }
+  };
+
+  // Auto-fetch transcript client-side when URL becomes valid (debounced).
+  useEffect(() => {
+    if (!isOpen || step !== 1) return undefined;
+    const url = youtubeUrl.trim();
+
+    if (!YOUTUBE_URL_RE.test(url)) {
+      setTranscriptStatus(null);
+      setFetchedTranscript(null);
+      lastTranscriptUrlRef.current = '';
+      return undefined;
+    }
+
+    if (transcriptStatus === 'manual') return undefined;
+
+    const timer = setTimeout(() => {
+      handleFetchTranscript(url);
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [youtubeUrl, isOpen, step]); // intentionally omit transcriptStatus to prevent loops
+
   const handleGenerate = async () => {
     setError(null);
     setLoadingMessage(LOADING_STAGES[0].message);
     setLoading(true);
     try {
+      const transcriptText = (transcriptStatus === 'manual'
+        ? manualTranscript
+        : fetchedTranscript
+      ) || '';
+
       const res = await api('/api/admin/examinations/generate-from-youtube', {
         method: 'POST',
         body: {
@@ -160,6 +224,7 @@ export default function GPTTestMakerModal({ isOpen, onClose, onSaved }) {
           n_questions: nQuestions,
           difficulty,
           exam_config: examConfig,
+          transcript_text: transcriptText.trim() || undefined,
         },
       });
       setGeneratedData(res);
@@ -301,6 +366,53 @@ export default function GPTTestMakerModal({ isOpen, onClose, onSaved }) {
                       onChange={(e) => setYoutubeUrl(e.target.value)}
                     />
                   </div>
+
+                  <div className="mt-2">
+                    {transcriptStatus === 'fetching' && (
+                      <div className="bg-[#FFF7D1] border-2 border-[#0A0A0A] p-2 flex items-center gap-2 text-xs font-bold shadow-[4px_4px_0_#0A0A0A]">
+                        <Loader2 size={16} className="animate-spin text-[#0066FF]" />
+                        <span>Fetching transcript...</span>
+                      </div>
+                    )}
+
+                    {transcriptStatus === 'ready' && (
+                      <div className="bg-white border-2 border-[#0A0A0A] p-2 flex items-center gap-2 text-xs font-bold shadow-[4px_4px_0_#0A0A0A]">
+                        <Check size={16} className="text-[#00A95C]" />
+                        <span>Transcript ready ({transcriptWordCount} words)</span>
+                      </div>
+                    )}
+
+                    {transcriptStatus === 'error' && (
+                      <div className="bg-[#FF4D4D]/10 border-2 border-[#FF4D4D] p-2 flex items-start gap-2 text-xs font-bold">
+                        <AlertCircle size={16} className="shrink-0" />
+                        <div className="flex-1">
+                          <div>Could not fetch transcript automatically.</div>
+                          <button
+                            type="button"
+                            className="mt-2 game-btn game-btn-gold px-3 py-2 text-xs"
+                            onClick={() => setTranscriptStatus('manual')}
+                          >
+                            Paste manually
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {transcriptStatus === 'manual' && (
+                      <div className="bg-white border-2 border-[#0A0A0A] p-3 shadow-[4px_4px_0_#0A0A0A]">
+                        <label className="block text-[10px] font-bold mb-1 uppercase tracking-wider text-[#0A0A0A]/60">
+                          Transcript (Manual Paste)
+                        </label>
+                        <textarea
+                          rows={6}
+                          className="field-input"
+                          placeholder="Paste the YouTube transcript here..."
+                          value={manualTranscript}
+                          onChange={(e) => setManualTranscript(e.target.value)}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -392,7 +504,7 @@ export default function GPTTestMakerModal({ isOpen, onClose, onSaved }) {
                 <div className="pt-4">
                   <button
                     onClick={handleGenerate}
-                    disabled={!isValidUrl || loading}
+                    disabled={!isValidUrl || loading || transcriptStatus === 'fetching'}
                     className="w-full game-btn game-btn-blue flex items-center justify-center gap-2 py-4 disabled:opacity-50"
                   >
                     <Sparkles size={20} />

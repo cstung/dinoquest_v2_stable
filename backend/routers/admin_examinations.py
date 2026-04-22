@@ -1,6 +1,7 @@
 """Admin endpoints for managing examinations."""
 
 from datetime import datetime, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, func
@@ -28,6 +29,10 @@ from backend.services.gpt_question_generator import generate_questions, normaliz
 import backend.config as config
 
 router = APIRouter(prefix="/api/admin/examinations", tags=["admin-examinations"])
+
+
+class YouTubeGenerateRequestClient(YouTubeGenerateRequest):
+    transcript_text: Optional[str] = None
 
 
 def _coerce_non_negative_int(value, default: int) -> int:
@@ -434,7 +439,7 @@ async def import_questions(
 
 @router.post("/generate-from-youtube", response_model=YouTubeGenerateResponse)
 async def generate_from_youtube_endpoint(
-    body: YouTubeGenerateRequest,
+    body: YouTubeGenerateRequestClient,
     db: AsyncSession = Depends(get_db),
     admin: User = Depends(require_admin),
 ):
@@ -447,6 +452,35 @@ async def generate_from_youtube_endpoint(
                 body.youtube_url, body.n_questions, body.difficulty)
     
     start_time = datetime.now(timezone.utc)
+
+    transcript_text = (body.transcript_text or "").strip()
+    if len(transcript_text) > 100:
+        logger.info(
+            "Using client-provided transcript (%d chars), skipping YouTube fetch",
+            len(transcript_text),
+        )
+        import re
+
+        match = re.search(
+            r"(?:v=|youtu\.be/|embed/|shorts/)([A-Za-z0-9_-]{11})",
+            body.youtube_url or "",
+        )
+        video_id = match.group(1) if match else "unknown"
+        thumbnail_url = (
+            f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
+            if video_id != "unknown"
+            else ""
+        )
+        video_data = {
+            "video_id": video_id,
+            "video_title": body.exam_config.get("title") or "Unknown Video",
+            "thumbnail_url": thumbnail_url,
+            "subtitle_text": transcript_text,
+            "subtitle_available": True,
+        }
+    else:
+        video_data = None
+
     # 1. Check daily rate limit
     today_start = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
     stmt = (
@@ -466,33 +500,34 @@ async def generate_from_youtube_endpoint(
             detail=f"Daily limit of {limit} generations reached. Please try again tomorrow."
         )
 
-    # 2. Fetch video data
-    try:
-        video_data = await get_video_data(body.youtube_url)
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"YouTube extraction failed: {str(e)}")
+    # 2. Fetch video data (fallback when client transcript is missing/too short)
+    if video_data is None:
+        try:
+            video_data = await get_video_data(body.youtube_url)
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=str(e))
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"YouTube extraction failed: {str(e)}")
 
-    if not video_data["subtitle_available"]:
-        subtitle_error = video_data.get("subtitle_error")
-        if subtitle_error == "timeout":
+        if not video_data["subtitle_available"]:
+            subtitle_error = video_data.get("subtitle_error")
+            if subtitle_error == "timeout":
+                raise HTTPException(
+                    status_code=504,
+                    detail="YouTube transcript fetch timeout. Try a shorter video or try again later.",
+                )
+            if subtitle_error == "error":
+                raise HTTPException(
+                    status_code=502,
+                    detail="YouTube transcript fetch error. Try again later.",
+                )
             raise HTTPException(
-                status_code=504,
-                detail="YouTube transcript fetch timeout. Try a shorter video or try again later.",
+                status_code=422,
+                detail=(
+                    "This video has no subtitles. "
+                    "Auto-generated captions may be disabled or unavailable for this video."
+                )
             )
-        if subtitle_error == "error":
-            raise HTTPException(
-                status_code=502,
-                detail="YouTube transcript fetch error. Try again later.",
-            )
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                "This video has no subtitles. "
-                "Auto-generated captions may be disabled or unavailable for this video."
-            )
-        )
 
     # 3. Generate questions
     try:
